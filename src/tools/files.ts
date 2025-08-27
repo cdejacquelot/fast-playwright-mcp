@@ -7,14 +7,12 @@ const uploadFile = defineTabTool({
   schema: {
     name: 'browser_file_upload',
     title: 'Upload files',
-    description: `Upload one or multiple files to file input.paths:["/path/file1.jpg","/path/file2.pdf"] for multiple files.expectation:{includeSnapshot:true,snapshotOptions:{selector:"form"}} to verify upload.Must be triggered after file input interaction.USE batch_execute for click→upload workflows.`,
+    description: 'Upload one or multiple files to file input',
     inputSchema: z.object({
-      paths: z
-        .array(z.string())
-        .describe(
-          'The absolute paths to the files to upload. Can be a single file or multiple files.'
-        ),
-      expectation: expectationSchema,
+      paths: z.array(z.string()).describe('Absolute paths to upload (array)'),
+      expectation: expectationSchema.describe(
+        'Page state config. Use batch_execute for click→upload'
+      ),
     }),
     type: 'destructive',
   },

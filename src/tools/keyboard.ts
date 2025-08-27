@@ -11,15 +11,14 @@ const pressKey = defineTabTool({
   schema: {
     name: 'browser_press_key',
     title: 'Press a key',
-    description:
-      'Press a key on the keyboard.Common keys:Enter,Escape,ArrowUp/Down/Left/Right,Tab,Backspace.expectation:{includeSnapshot:false} for navigation keys,true for content changes.CONSIDER batch_execute for multiple key presses.',
+    description: 'Press a key on the keyboard',
     inputSchema: z.object({
       key: z
         .string()
-        .describe(
-          'Name of the key to press or a character to generate, such as `ArrowLeft` or `a`'
-        ),
-      expectation: expectationSchema,
+        .describe('Key to press (e.g., Enter, Escape, ArrowLeft, a)'),
+      expectation: expectationSchema.describe(
+        'Page state config. Use batch_execute for multiple keys'
+      ),
     }),
     type: 'destructive',
   },
@@ -48,24 +47,21 @@ const typeSchema = elementSchema.extend({
       'System-generated element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
     ),
   text: z.string().describe('Text to type into the element'),
-  submit: z
-    .boolean()
-    .optional()
-    .describe('Whether to submit entered text (press Enter after)'),
+  submit: z.boolean().optional().describe('Press Enter after typing if true'),
   slowly: z
     .boolean()
     .optional()
-    .describe(
-      'Whether type one character at a time. Useful for triggering key handlers in the page. By default entire text is filled in at once.'
-    ),
-  expectation: expectationSchema,
+    .describe('Type slowly for auto-complete if true'),
+  expectation: expectationSchema.describe(
+    'Page state config. Use batch_execute for forms'
+  ),
 });
 const type = defineTabTool({
   capability: 'core',
   schema: {
     name: 'browser_type',
     title: 'Type text',
-    description: `Type text into editable element.FOR FORMS:Use batch_execute to fill multiple fields efficiently.slowly:true for auto-complete fields,submit:true to press Enter after.expectation:{includeSnapshot:false} when filling multiple fields(use batch),true for final verification.snapshotOptions:{selector:"form"} to focus on form only.diffOptions:{enabled:true} shows only what changed in form.`,
+    description: 'Type text into editable element',
     inputSchema: typeSchema,
     type: 'destructive',
   },

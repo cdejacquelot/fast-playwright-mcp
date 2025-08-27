@@ -4,9 +4,15 @@ import { z } from 'zod';
  */
 export const diffOptionsSchema = z
   .object({
-    enabled: z.boolean().default(false),
+    enabled: z
+      .boolean()
+      .default(false)
+      .describe('Show only changes (saves ~80% tokens)'),
     threshold: z.number().min(0).max(1).default(0.1),
-    format: z.enum(['unified', 'split', 'minimal']).default('unified'),
+    format: z
+      .enum(['unified', 'split', 'minimal'])
+      .default('unified')
+      .describe('Diff format ("minimal" for smallest output)'),
     maxDiffLines: z.number().positive().default(50),
     ignoreWhitespace: z.boolean().default(true),
     context: z.number().min(0).default(3),
@@ -17,7 +23,11 @@ export const diffOptionsSchema = z
  */
 export const expectationSchema = z
   .object({
-    includeSnapshot: z.boolean().optional().default(false),
+    includeSnapshot: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Include accessibility tree (false for chained actions)'),
     includeConsole: z.boolean().optional().default(false),
     includeDownloads: z.boolean().optional().default(false),
     includeTabs: z.boolean().optional().default(false),
@@ -27,11 +37,8 @@ export const expectationSchema = z
         selector: z
           .string()
           .optional()
-          .describe('CSS selector to limit snapshot scope'),
-        maxLength: z
-          .number()
-          .optional()
-          .describe('Maximum characters for snapshot'),
+          .describe('CSS selector to limit scope (e.g., ".result", "form")'),
+        maxLength: z.number().optional().describe('Max snapshot characters'),
         format: z.enum(['aria', 'text', 'html']).optional().default('aria'),
       })
       .optional(),

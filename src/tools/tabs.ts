@@ -7,10 +7,9 @@ const listTabs = defineTool({
   schema: {
     name: 'browser_tab_list',
     title: 'List tabs',
-    description:
-      'List browser tabs.Always returns tab list with titles and URLs.expectation:{includeSnapshot:false} for just tab info,true to also see current tab content.USE before tab_select to find right tab.',
+    description: 'List browser tabs with titles and URLs',
     inputSchema: z.object({
-      expectation: expectationSchema,
+      expectation: expectationSchema.describe('Page state config'),
     }),
     type: 'readOnly',
   },
@@ -24,10 +23,10 @@ const selectTab = defineTool({
   schema: {
     name: 'browser_tab_select',
     title: 'Select a tab',
-    description: `Select a tab by index.expectation:{includeSnapshot:true} to see selected tab content,false if you know what's there.USE batch_execute for tab_select→interact workflows.`,
+    description: 'Select a tab by index',
     inputSchema: z.object({
       index: z.number().describe('The index of the tab to select'),
-      expectation: expectationSchema,
+      expectation: expectationSchema.describe('Page state after tab switch'),
     }),
     type: 'readOnly',
   },
@@ -41,15 +40,10 @@ const newTab = defineTool({
   schema: {
     name: 'browser_tab_new',
     title: 'Open a new tab',
-    description: `Open a new tab.url:"https://example.com" to navigate immediately,omit for blank tab.expectation:{includeSnapshot:true} to see new tab,false if opening for later use.CONSIDER batch_execute for new_tab→navigate→interact.`,
+    description: 'Open a new tab',
     inputSchema: z.object({
-      url: z
-        .string()
-        .optional()
-        .describe(
-          'The URL to navigate to in the new tab. If not provided, the new tab will be blank.'
-        ),
-      expectation: expectationSchema,
+      url: z.string().optional().describe('URL for new tab (optional)'),
+      expectation: expectationSchema.describe('Page state of new tab'),
     }),
     type: 'readOnly',
   },
@@ -66,16 +60,13 @@ const closeTab = defineTool({
   schema: {
     name: 'browser_tab_close',
     title: 'Close a tab',
-    description:
-      'Close a tab.index:N to close specific tab,omit to close current.expectation:{includeSnapshot:false} usually sufficient,true to verify remaining tabs.USE batch_execute for multi-tab cleanup.',
+    description: 'Close a tab by index or close current tab',
     inputSchema: z.object({
       index: z
         .number()
         .optional()
-        .describe(
-          'The index of the tab to close. Closes current tab if not provided.'
-        ),
-      expectation: expectationSchema,
+        .describe('Tab index to close (omit for current)'),
+      expectation: expectationSchema.describe('Page state after close'),
     }),
     type: 'destructive',
   },

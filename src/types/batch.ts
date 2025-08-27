@@ -34,7 +34,9 @@ export const batchExecuteSchema = z.object({
   steps: z
     .array(batchStepSchema)
     .min(1)
-    .describe('Array of steps to execute in sequence'),
+    .describe(
+      'Array of steps to execute in sequence. Recommended for form filling (multiple type→click), multi-step navigation, any workflow with 2+ known steps. Saves 90% tokens vs individual calls. Example: [{tool:"browser_navigate",arguments:{url:"https://example.com"}},{tool:"browser_type",arguments:{element:"username",ref:"#user",text:"john"}},{tool:"browser_click",arguments:{element:"submit",ref:"#btn"}}]'
+    ),
   stopOnFirstError: z
     .boolean()
     .optional()
@@ -43,7 +45,9 @@ export const batchExecuteSchema = z.object({
   globalExpectation: z
     .preprocess(parseJsonString, expectationSchema)
     .optional()
-    .describe('Default expectation for all steps'),
+    .describe(
+      'Default expectation for all steps. Recommended: {includeSnapshot:false,snapshotOptions:{selector:"#app"},diffOptions:{enabled:true}}. Per-step override with steps[].expectation'
+    ),
 });
 export type BatchStep = z.infer<typeof batchStepSchema>;
 export type BatchExecuteOptions = z.infer<typeof batchExecuteSchema>;

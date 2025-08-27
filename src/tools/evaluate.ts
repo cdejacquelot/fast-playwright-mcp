@@ -8,9 +8,7 @@ import { generateLocator } from './utils.js';
 const evaluateSchema = z.object({
   function: z
     .string()
-    .describe(
-      '() => { /* code */ } or (element) => { /* code */ } when element is provided'
-    ),
+    .describe('JS function: () => {...} or (element) => {...}'),
   element: z
     .string()
     .optional()
@@ -23,7 +21,9 @@ const evaluateSchema = z.object({
     .describe(
       'System-generated element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
     ),
-  expectation: expectationSchema,
+  expectation: expectationSchema.describe(
+    'Page state config. false for data extraction, true for DOM changes'
+  ),
 });
 const evaluate = defineTabTool({
   capability: 'core',
@@ -31,7 +31,7 @@ const evaluate = defineTabTool({
     name: 'browser_evaluate',
     title: 'Evaluate JavaScript',
     description:
-      'Evaluate JavaScript expression on page or element.Returns evaluation result.USE CASES:extract data,modify DOM,trigger events.expectation:{includeSnapshot:false} for data extraction,true if modifying page.element+ref to run on specific element.CONSIDER batch_execute for multiple evaluations.',
+      'Evaluate JavaScript expression on page or element and return result',
     inputSchema: evaluateSchema,
     type: 'destructive',
   },
