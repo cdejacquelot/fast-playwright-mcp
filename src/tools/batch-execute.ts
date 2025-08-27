@@ -14,7 +14,7 @@ export const batchExecuteTool = defineTool({
     name: 'browser_batch_execute',
     title: 'Batch Execute Browser Actions',
     description:
-      'Execute multiple browser actions in sequence with optimized response handling',
+      'Execute multiple browser actions in sequence. PREFER over individual tools for 2+ operations.',
     inputSchema: batchExecuteSchema,
     type: 'destructive',
   },
