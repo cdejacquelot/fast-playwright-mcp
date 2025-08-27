@@ -45,7 +45,7 @@ export const elementSchema = z.object({
   ref: z
     .string()
     .describe(
-      'System-generated element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+      'System-generated element ID from previous tool results. Never use custom values.'
     ),
 });
 
@@ -110,7 +110,7 @@ const drag = defineTabTool({
       startRef: z
         .string()
         .describe(
-          'System-generated source element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+          'System-generated source element ID from previous tool results. Never use custom values.'
         ),
       endElement: z
         .string()
@@ -120,7 +120,7 @@ const drag = defineTabTool({
       endRef: z
         .string()
         .describe(
-          'System-generated target element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+          'System-generated target element ID from previous tool results. Never use custom values.'
         ),
       expectation: expectationSchema.describe(
         'Page state after drag. Use batch_execute for workflows'

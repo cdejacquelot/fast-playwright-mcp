@@ -13,9 +13,7 @@ const pressKey = defineTabTool({
     title: 'Press a key',
     description: 'Press a key on the keyboard',
     inputSchema: z.object({
-      key: z
-        .string()
-        .describe('Key to press (e.g., Enter, Escape, ArrowLeft, a)'),
+      key: z.string().describe('Key to press'),
       expectation: expectationSchema.describe(
         'Page state config. Use batch_execute for multiple keys'
       ),
@@ -44,9 +42,9 @@ const typeSchema = elementSchema.extend({
   ref: z
     .string()
     .describe(
-      'System-generated element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+      'System-generated element ID from previous tool results. Never use custom values.'
     ),
-  text: z.string().describe('Text to type into the element'),
+  text: z.string(),
   submit: z.boolean().optional().describe('Press Enter after typing if true'),
   slowly: z
     .boolean()

@@ -11,8 +11,8 @@ const wait = defineTool({
       'Wait for text to appear or disappear or a specified time to pass',
     inputSchema: z.object({
       time: z.number().optional().describe('Wait time in seconds'),
-      text: z.string().optional().describe('Text to wait for'),
-      textGone: z.string().optional().describe('Text to wait to disappear'),
+      text: z.string().optional(),
+      textGone: z.string().optional(),
       expectation: expectationSchema.describe('Page state after wait'),
     }),
     type: 'readOnly',
