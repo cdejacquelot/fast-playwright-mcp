@@ -9,9 +9,9 @@ const snapshot = defineTool({
   schema: {
     name: 'browser_snapshot',
     title: 'Page snapshot',
-    description: `Capture accessibility snapshot of current page.AVOID calling directly - use expectation:{includeSnapshot:true} on other tools instead.USE CASES:Initial page inspection,debugging when other tools didn't capture needed info.snapshotOptions:{selector:"#content"} to focus on specific area.`,
+    description: 'Capture accessibility snapshot of current page',
     inputSchema: z.object({
-      expectation: expectationSchema,
+      expectation: expectationSchema.describe('Page state config'),
     }),
     type: 'readOnly',
   },
@@ -45,27 +45,26 @@ export const elementSchema = z.object({
   ref: z
     .string()
     .describe(
-      'System-generated element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+      'System-generated element ID from previous tool results. Never use custom values.'
     ),
 });
 
 const clickSchema = elementSchema.extend({
-  doubleClick: z
-    .boolean()
-    .optional()
-    .describe('Whether to perform a double click instead of a single click'),
+  doubleClick: z.boolean().optional().describe('Double-click if true'),
   button: z
     .enum(['left', 'right', 'middle'])
     .optional()
-    .describe('Button to click, defaults to left'),
-  expectation: expectationSchema,
+    .describe('Mouse button (default: left)'),
+  expectation: expectationSchema.describe(
+    'Page state capture config. Use batch_execute for multi-clicks'
+  ),
 });
 const click = defineTabTool({
   capability: 'core',
   schema: {
     name: 'browser_click',
-    title: 'Click',
-    description: `Perform click on web page.USE batch_execute for multi-click workflows.expectation:{includeSnapshot:false} when next action follows immediately,true to verify result.diffOptions:{enabled:true,format:"minimal"} shows only changes(saves 80% tokens).snapshotOptions:{selector:".result"} to focus on result area.doubleClick:true for double-click,button:"right" for context menu.`,
+    title: 'Perform click on web page',
+    description: 'Perform click on web page',
     inputSchema: clickSchema,
     type: 'destructive',
   },
@@ -101,7 +100,7 @@ const drag = defineTabTool({
   schema: {
     name: 'browser_drag',
     title: 'Drag mouse',
-    description: `Perform drag and drop between two elements.expectation:{includeSnapshot:true,snapshotOptions:{selector:".drop-zone"}} to verify drop result.diffOptions:{enabled:true} shows only what moved.CONSIDER batch_execute if part of larger workflow.`,
+    description: 'Perform drag and drop between two elements',
     inputSchema: z.object({
       startElement: z
         .string()
@@ -111,7 +110,7 @@ const drag = defineTabTool({
       startRef: z
         .string()
         .describe(
-          'System-generated source element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+          'System-generated source element ID from previous tool results. Never use custom values.'
         ),
       endElement: z
         .string()
@@ -121,9 +120,11 @@ const drag = defineTabTool({
       endRef: z
         .string()
         .describe(
-          'System-generated target element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values.'
+          'System-generated target element ID from previous tool results. Never use custom values.'
         ),
-      expectation: expectationSchema,
+      expectation: expectationSchema.describe(
+        'Page state after drag. Use batch_execute for workflows'
+      ),
     }),
     type: 'destructive',
   },
@@ -145,9 +146,11 @@ const hover = defineTabTool({
   schema: {
     name: 'browser_hover',
     title: 'Hover mouse',
-    description: `Hover over element on page.expectation:{includeSnapshot:true} to capture tooltips/dropdown menus,false for simple hover.snapshotOptions:{selector:".tooltip"} to focus on tooltip area.Often followed by click - use batch_execute for hover→click sequences.`,
+    description: 'Hover over element on page',
     inputSchema: elementSchema.extend({
-      expectation: expectationSchema,
+      expectation: expectationSchema.describe(
+        'Page state after hover. Use batch_execute for hover→click'
+      ),
     }),
     type: 'readOnly',
   },
@@ -160,19 +163,17 @@ const hover = defineTabTool({
   },
 });
 const selectOptionSchema = elementSchema.extend({
-  values: z
-    .array(z.string())
-    .describe(
-      'Array of values to select in the dropdown. This can be a single value or multiple values.'
-    ),
-  expectation: expectationSchema,
+  values: z.array(z.string()).describe('Values to select (array)'),
+  expectation: expectationSchema.describe(
+    'Page state after selection. Use batch_execute for forms'
+  ),
 });
 const selectOption = defineTabTool({
   capability: 'core',
   schema: {
     name: 'browser_select_option',
     title: 'Select option',
-    description: `Select option in dropdown.values:["option1","option2"] for multi-select.expectation:{includeSnapshot:false} when part of form filling(use batch),true to verify selection.snapshotOptions:{selector:"form"} for form context.USE batch_execute for form workflows with multiple selects.`,
+    description: 'Select option in dropdown',
     inputSchema: selectOptionSchema,
     type: 'destructive',
   },

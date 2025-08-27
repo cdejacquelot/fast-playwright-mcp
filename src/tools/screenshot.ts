@@ -37,7 +37,7 @@ const screenshotSchema = z
       .describe(
         'When true, takes a screenshot of the full scrollable page, instead of the currently visible viewport. Cannot be used with element screenshots.'
       ),
-    expectation: expectationSchema,
+    expectation: expectationSchema.describe('Additional page state config'),
   })
   .refine(
     (data) => {
@@ -137,7 +137,7 @@ const screenshot = defineTabTool({
   schema: {
     name: 'browser_take_screenshot',
     title: 'Take a screenshot',
-    description: `Take a screenshot of current page.Returns image data.expectation:{includeSnapshot:false} to avoid redundant accessibility tree(screenshot≠snapshot).imageOptions:{quality:50,format:"jpeg"} for 70% size reduction.fullPage:true for entire page,element+ref for specific element.USE CASES:visual verification,documentation,error capture.`,
+    description: 'Take a screenshot of current page and return image data',
     inputSchema: screenshotSchema,
     type: 'readOnly',
   },

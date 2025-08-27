@@ -7,14 +7,13 @@ const handleDialog = defineTabTool({
   schema: {
     name: 'browser_handle_dialog',
     title: 'Handle a dialog',
-    description: `Handle a dialog(alert,confirm,prompt).accept:true to accept,false to dismiss.promptText:"answer" for prompt dialogs.expectation:{includeSnapshot:true} to see page after dialog handling.USE batch_execute if dialog appears during workflow.`,
+    description: 'Handle a dialog (alert, confirm, prompt)',
     inputSchema: z.object({
-      accept: z.boolean().describe('Whether to accept the dialog.'),
-      promptText: z
-        .string()
-        .optional()
-        .describe('The text of the prompt in case of a prompt dialog.'),
-      expectation: expectationSchema,
+      accept: z.boolean().describe('Accept (true) or dismiss (false)'),
+      promptText: z.string().optional().describe('Text for prompt dialogs'),
+      expectation: expectationSchema.describe(
+        'Page state after dialog. Use batch_execute for workflows'
+      ),
     }),
     type: 'destructive',
   },

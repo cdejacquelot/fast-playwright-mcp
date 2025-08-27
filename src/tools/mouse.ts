@@ -39,12 +39,13 @@ const mouseClick = defineTabTool({
   schema: {
     name: 'browser_mouse_click_xy',
     title: 'Click',
-    description:
-      'Click at specific coordinates.Requires --caps=vision.x,y:click position.expectation:{includeSnapshot:true} to verify result.PREFER browser_click with element ref over coordinates.USE batch_execute for coordinate-based workflows.',
+    description: 'Click at specific coordinates',
     inputSchema: elementSchema.extend({
-      x: z.number().describe('X coordinate'),
-      y: z.number().describe('Y coordinate'),
-      expectation: expectationSchema,
+      x: z.number().describe('X coordinate (requires --caps=vision)'),
+      y: z.number().describe('Y coordinate (requires --caps=vision)'),
+      expectation: expectationSchema.describe(
+        'Page state after click. Prefer element ref over coords'
+      ),
     }),
     type: 'destructive',
   },
@@ -69,13 +70,15 @@ const mouseDrag = defineTabTool({
   schema: {
     name: 'browser_mouse_drag_xy',
     title: 'Drag mouse',
-    description: `Drag from one coordinate to another.Requires --caps=vision.startX,startY→endX,endY.expectation:{includeSnapshot:true,snapshotOptions:{selector:".drop-zone"}} to verify.PREFER browser_drag with element refs over coordinates.`,
+    description: 'Drag from one coordinate to another',
     inputSchema: elementSchema.extend({
-      startX: z.number().describe('Start X coordinate'),
-      startY: z.number().describe('Start Y coordinate'),
-      endX: z.number().describe('End X coordinate'),
-      endY: z.number().describe('End Y coordinate'),
-      expectation: expectationSchema,
+      startX: z.number().describe('Start X (requires --caps=vision)'),
+      startY: z.number().describe('Start Y (requires --caps=vision)'),
+      endX: z.number().describe('End X'),
+      endY: z.number().describe('End Y'),
+      expectation: expectationSchema.describe(
+        'Page state after drag. Prefer element refs over coords'
+      ),
     }),
     type: 'destructive',
   },

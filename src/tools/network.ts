@@ -8,19 +8,32 @@ import {
 import { defineTabTool } from './tool.js';
 
 const networkFilterSchema = z.object({
-  urlPatterns: z.array(z.string()).optional(),
-  excludeUrlPatterns: z.array(z.string()).optional(),
+  urlPatterns: z
+    .array(z.string())
+    .optional()
+    .describe('URL patterns to filter (supports regex)'),
+  excludeUrlPatterns: z
+    .array(z.string())
+    .optional()
+    .describe('URL patterns to exclude (takes precedence)'),
   statusRanges: z
     .array(
       z.object({
-        min: z.number(),
-        max: z.number(),
+        min: z.number().describe('Minimum status code'),
+        max: z.number().describe('Maximum status code'),
       })
     )
-    .optional(),
-  methods: z.array(z.string()).optional(),
-  maxRequests: z.number().default(20),
-  newestFirst: z.boolean().default(true),
+    .optional()
+    .describe('Status code ranges (e.g., [{min:200,max:299}])'),
+  methods: z.array(z.string()).optional().describe('HTTP methods to filter'),
+  maxRequests: z
+    .number()
+    .default(20)
+    .describe('Max requests to return (default: 20)'),
+  newestFirst: z
+    .boolean()
+    .default(true)
+    .describe('Order by timestamp (default: newest first)'),
 });
 
 const requests = defineTabTool({
@@ -29,7 +42,7 @@ const requests = defineTabTool({
     name: 'browser_network_requests',
     title: 'List network requests',
     description:
-      'Returns network requests since loading the page with optional filtering. urlPatterns:["api/users"] to filter by URL patterns. excludeUrlPatterns:["analytics"] to exclude specific patterns. statusRanges:[{min:200,max:299}] for success codes only. methods:["GET","POST"] to filter by HTTP method. maxRequests:10 to limit results. newestFirst:false for chronological order. Supports regex patterns for advanced filtering.',
+      'Returns network requests since loading the page with optional filtering',
     inputSchema: networkFilterSchema.partial(),
     type: 'readOnly',
   },
