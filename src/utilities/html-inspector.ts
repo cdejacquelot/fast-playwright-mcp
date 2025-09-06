@@ -265,7 +265,10 @@ export class HTMLInspector {
     }
 
     // Sort by confidence and limit results
-    return suggestions.sort((a, b) => b.confidence - a.confidence).slice(0, 20);
+    const sortedSuggestions = suggestions.sort(
+      (a, b) => b.confidence - a.confidence
+    );
+    return sortedSuggestions.slice(0, 20);
   }
 
   /**

@@ -414,7 +414,9 @@ export class SelectorResolver {
           confidence: 0,
           strategy: ResolutionStrategy.ROLE_SEQUENTIAL,
           alternatives,
-          error: `No elements found with role "${selector.role}"${selector.text ? ` and text "${selector.text}"` : ''}`,
+          error: selector.text
+            ? `No elements found with role "${selector.role}" and text "${selector.text}"`
+            : `No elements found with role "${selector.role}"`,
         };
       }
 
@@ -429,7 +431,10 @@ export class SelectorResolver {
               )
               .map(([key, value]) => `${key}="${value}"`)
               .join(' ');
-            return `  ${i + 1}) ${attrs ? `[${attrs}] ` : ''}text: "${c.text.substring(0, 50)}${c.text.length > 50 ? '...' : ''}"`;
+            const prefix = attrs ? `[${attrs}] ` : '';
+            const truncatedText =
+              c.text.length > 50 ? `${c.text.substring(0, 50)}...` : c.text;
+            return `  ${i + 1}) ${prefix}text: "${truncatedText}"`;
           })
           .join('\n');
 
@@ -493,7 +498,10 @@ export class SelectorResolver {
               )
               .map(([key, value]) => `${key}="${value}"`)
               .join(' ');
-            return `  ${i + 1}) ${attrs ? `[${attrs}] ` : ''}text: "${c.text.substring(0, 50)}${c.text.length > 50 ? '...' : ''}"`;
+            const prefix = attrs ? `[${attrs}] ` : '';
+            const truncatedText =
+              c.text.length > 50 ? `${c.text.substring(0, 50)}...` : c.text;
+            return `  ${i + 1}) ${prefix}text: "${truncatedText}"`;
           })
           .join('\n');
 
@@ -546,7 +554,9 @@ export class SelectorResolver {
           confidence: 0,
           strategy: ResolutionStrategy.TEXT_FALLBACK,
           alternatives,
-          error: `No elements found with text "${selector.text}"${selector.tag ? ` in ${selector.tag} tags` : ''}`,
+          error: selector.tag
+            ? `No elements found with text "${selector.text}" in ${selector.tag} tags`
+            : `No elements found with text "${selector.text}"`,
         };
       }
 
@@ -567,7 +577,10 @@ export class SelectorResolver {
               .map(([key, value]) => `${key}="${value}"`)
               .join(' ');
             const tagName = c.attributes.tagName || 'element';
-            return `  ${i + 1}) <${tagName}${attrs ? ` ${attrs}` : ''}> text: "${c.text.substring(0, 50)}${c.text.length > 50 ? '...' : ''}"`;
+            const attrString = attrs ? ` ${attrs}` : '';
+            const truncatedText =
+              c.text.length > 50 ? `${c.text.substring(0, 50)}...` : c.text;
+            return `  ${i + 1}) <${tagName}${attrString}> text: "${truncatedText}"`;
           })
           .join('\n');
 

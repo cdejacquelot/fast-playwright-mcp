@@ -552,11 +552,11 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     const result = await this._selectorResolver.resolveSingleSelector(selector);
 
     if (result.error || !result.locator) {
-      throw new Error(
-        `Failed to resolve selector for element "${params.element}": ${
-          result.error || 'Unknown error'
-        }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
-      );
+      const errorMessage = `Failed to resolve selector for element "${params.element}": ${result.error || 'Unknown error'}`;
+      const alternativesMessage = result.alternatives
+        ? `. Alternatives: ${JSON.stringify(result.alternatives)}`
+        : '';
+      throw new Error(errorMessage + alternativesMessage);
     }
 
     return result.locator.describe(params.element);
@@ -587,11 +587,11 @@ export class Tab extends EventEmitter<TabEventsInterface> {
       const param = params[i];
 
       if (result.error || !result.locator) {
-        throw new Error(
-          `Failed to resolve selector for element "${param.element}": ${
-            result.error || 'Unknown error'
-          }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
-        );
+        const errorMessage = `Failed to resolve selector for element "${param.element}": ${result.error || 'Unknown error'}`;
+        const alternativesMessage = result.alternatives
+          ? `. Alternatives: ${JSON.stringify(result.alternatives)}`
+          : '';
+        throw new Error(errorMessage + alternativesMessage);
       }
 
       results.push(result.locator.describe(param.element));
