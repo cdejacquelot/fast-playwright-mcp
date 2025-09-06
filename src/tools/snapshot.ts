@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { expectationSchema } from '../schemas/expectation.js';
+import { elementSelectorSchema } from '../types/selectors.js';
 import { formatObject } from '../utils/codegen.js';
+import {
+  handleSnapshotExpectation,
+  resolveDragElements,
+  resolveFirstElement,
+} from './shared-element-utils.js';
 import { defineTabTool, defineTool } from './tool.js';
 import { generateLocator } from './utils.js';
 
@@ -35,21 +41,20 @@ const snapshot = defineTool({
   },
 });
 
-// Element schema for tools that require element interaction
-export const elementSchema = z.object({
-  element: z
-    .string()
-    .describe(
-      'Human-readable element description used to obtain permission to interact with the element'
-    ),
-  ref: z
-    .string()
-    .describe(
-      'System-generated element ID from previous tool results. Never use custom values.'
-    ),
-});
+// Enhanced selector schema for browser tools using the unified selector system
+export const selectorsSchema = z
+  .array(elementSelectorSchema)
+  .min(1)
+  .max(5)
+  .describe(
+    'Array of element selectors (max 5). Selectors are tried in order until one succeeds (fallback mechanism). ' +
+      'Multiple matches trigger an error with candidate list. ' +
+      'Supports: ref (highest priority), CSS (#id, .class, tag), role (button, textbox, etc.), text content. ' +
+      'Example: [{css: "#submit"}, {role: "button", text: "Submit"}] - tries ID first, falls back to role+text'
+  );
 
-const clickSchema = elementSchema.extend({
+const clickSchema = z.object({
+  selectors: selectorsSchema,
   doubleClick: z.boolean().optional().describe('Double-click if true'),
   button: z
     .enum(['left', 'right', 'middle'])
@@ -69,9 +74,14 @@ const click = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const locator = await tab.refLocator(params);
+    const { locator } = await resolveFirstElement(
+      tab,
+      params.selectors,
+      'Failed to resolve any element selectors'
+    );
     const button = params.button;
     const buttonAttr = button ? `{ button: '${button}' }` : '';
+
     if (params.doubleClick) {
       response.addCode(
         `await page.${await generateLocator(locator)}.dblclick(${buttonAttr});`
@@ -81,6 +91,7 @@ const click = defineTabTool({
         `await page.${await generateLocator(locator)}.click(${buttonAttr});`
       );
     }
+
     await tab.waitForCompletion(async () => {
       if (params.doubleClick) {
         await locator.dblclick({ button });
@@ -88,11 +99,9 @@ const click = defineTabTool({
         await locator.click({ button });
       }
     });
+
     // If expectation includes snapshot, capture it now after potential navigation
-    if (params.expectation?.includeSnapshot) {
-      const newSnapshot = await tab.captureSnapshot();
-      response.setTabSnapshot(newSnapshot);
-    }
+    await handleSnapshotExpectation(tab, params.expectation, response);
   },
 });
 const drag = defineTabTool({
@@ -102,26 +111,12 @@ const drag = defineTabTool({
     title: 'Drag mouse',
     description: 'Perform drag and drop between two elements',
     inputSchema: z.object({
-      startElement: z
-        .string()
-        .describe(
-          'Human-readable source element description used to obtain the permission to interact with the element'
-        ),
-      startRef: z
-        .string()
-        .describe(
-          'System-generated source element ID from previous tool results. Never use custom values.'
-        ),
-      endElement: z
-        .string()
-        .describe(
-          'Human-readable target element description used to obtain the permission to interact with the element'
-        ),
-      endRef: z
-        .string()
-        .describe(
-          'System-generated target element ID from previous tool results. Never use custom values.'
-        ),
+      startSelectors: selectorsSchema.describe(
+        'Source element selectors for drag start'
+      ),
+      endSelectors: selectorsSchema.describe(
+        'Target element selectors for drag end'
+      ),
       expectation: expectationSchema.describe(
         'Page state after drag. Use batch_execute for workflows'
       ),
@@ -129,13 +124,16 @@ const drag = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const [startLocator, endLocator] = await tab.refLocators([
-      { ref: params.startRef, element: params.startElement },
-      { ref: params.endRef, element: params.endElement },
-    ]);
+    const { startLocator, endLocator } = await resolveDragElements(
+      tab,
+      params.startSelectors,
+      params.endSelectors
+    );
+
     await tab.waitForCompletion(async () => {
       await startLocator.dragTo(endLocator);
     });
+
     response.addCode(
       `await page.${await generateLocator(startLocator)}.dragTo(page.${await generateLocator(endLocator)});`
     );
@@ -147,7 +145,8 @@ const hover = defineTabTool({
     name: 'browser_hover',
     title: 'Hover mouse',
     description: 'Hover over element on page',
-    inputSchema: elementSchema.extend({
+    inputSchema: z.object({
+      selectors: selectorsSchema,
       expectation: expectationSchema.describe(
         'Page state after hover. Use batch_execute for hover→click'
       ),
@@ -155,14 +154,17 @@ const hover = defineTabTool({
     type: 'readOnly',
   },
   handle: async (tab, params, response) => {
-    const locator = await tab.refLocator(params);
+    const { locator } = await resolveFirstElement(tab, params.selectors);
+
     response.addCode(`await page.${await generateLocator(locator)}.hover();`);
+
     await tab.waitForCompletion(async () => {
       await locator.hover();
     });
   },
 });
-const selectOptionSchema = elementSchema.extend({
+const selectOptionSchema = z.object({
+  selectors: selectorsSchema,
   values: z.array(z.string()).describe('Values to select (array)'),
   expectation: expectationSchema.describe(
     'Page state after selection. Use batch_execute for forms'
@@ -178,10 +180,12 @@ const selectOption = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const locator = await tab.refLocator(params);
+    const { locator } = await resolveFirstElement(tab, params.selectors);
+
     response.addCode(
       `await page.${await generateLocator(locator)}.selectOption(${formatObject(params.values)});`
     );
+
     await tab.waitForCompletion(async () => {
       await locator.selectOption(params.values);
     });

@@ -165,33 +165,30 @@ export abstract class BaseElementToolHandler<
   TParams extends ElementToolParams,
 > extends BaseToolHandler<TParams> {
   /**
-   * Resolve element locator from params
+   * Note: This class is deprecated and only kept for backward compatibility.
+   * All tools have been migrated to use selector arrays directly.
+   * This will be removed in a future version.
+   * @deprecated
    */
-  async resolveElementLocator(
-    tab: Tab,
-    params: TParams
+
+  /**
+   * Resolve element locator from params
+   * @deprecated No longer used - tools handle selectors directly
+   */
+  resolveElementLocator(
+    _tab: Tab,
+    _params: TParams
   ): Promise<import('playwright').Locator | undefined> {
-    if (params.ref && params.element) {
-      return await tab.refLocator({
-        ref: params.ref,
-        element: params.element,
-      });
-    }
+    // This method is no longer used by any tools
+    return Promise.resolve(undefined);
   }
 
   /**
    * Validate element parameters
+   * @deprecated No longer used - tools handle validation directly
    */
-  validateElementParams(params: TParams): void {
-    if (params.ref && !params.element) {
-      throw new Error('Element description is required when ref is provided');
-    }
-
-    if (params.element && !params.ref) {
-      throw new Error(
-        'Element ref is required when element description is provided'
-      );
-    }
+  validateElementParams(_params: TParams): void {
+    // This method is no longer used by any tools
   }
 
   /**
@@ -203,14 +200,6 @@ export abstract class BaseElementToolHandler<
     params: TParams
   ): void {
     super.handleToolError(error, response, params);
-
-    // Add element-specific debugging suggestions
-    if (params.element && params.ref) {
-      response.addResult('Suggestion: Verify element selector is still valid');
-      response.addResult(
-        'Suggestion: Check if element is visible and interactable'
-      );
-    }
   }
 }
 

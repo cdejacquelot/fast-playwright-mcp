@@ -3,13 +3,19 @@ import type * as playwright from 'playwright';
 import { TIMEOUTS } from './config/constants.js';
 import type { Context } from './context.js';
 import { ManualPromise } from './manual-promise.js';
+import { SelectorResolver } from './services/selector-resolver.js';
 import type { ModalState } from './tools/tool.js';
 import { callOnPageNoTrace, waitForCompletion } from './tools/utils.js';
 import type { CustomRefOptions } from './types/batch.js';
+import type {
+  BatchResolutionOptions,
+  ElementSelector,
+  EnhancedSelectorResult,
+  SelectorResolutionResult,
+} from './types/selectors.js';
 import { logUnhandledError } from './utils/log.js';
 
 // Regex constants
-const REF_VALUE_REGEX = /\[ref=([^\]]+)\]/;
 
 type PageEx = playwright.Page & {
   _snapshotForAI: () => Promise<string>;
@@ -54,6 +60,7 @@ export class Tab extends EventEmitter<TabEventsInterface> {
   }[] = [];
   private readonly _customRefMappings: Map<string, string> = new Map();
   private _customRefCounter = 0;
+  private readonly _selectorResolver: SelectorResolver;
   private readonly _navigationState: {
     isNavigating: boolean;
     lastNavigationStart: number;
@@ -71,6 +78,7 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     this.context = context;
     this.page = page;
     this._onPageClose = onPageClose;
+    this._selectorResolver = new SelectorResolver(page);
     page.on('console', (event) =>
       this._handleConsoleMessage(messageToConsoleMessage(event))
     );
@@ -496,39 +504,102 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     return `element_${this._customRefCounter}`;
   }
 
+  /**
+   * Resolve multiple element selectors using the new unified selector system
+   */
+  async resolveElementLocators(
+    selectors: ElementSelector[],
+    options?: BatchResolutionOptions
+  ): Promise<SelectorResolutionResult[]> {
+    tabDebug(`Resolving ${selectors.length} element locators`);
+    try {
+      return await this._selectorResolver.resolveSelectors(selectors, options);
+    } catch (error) {
+      tabDebug('Failed to resolve element locators:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve a single element selector with enhanced metadata
+   */
+  async resolveSingleElementLocator(
+    selector: ElementSelector,
+    options?: { timeoutMs?: number }
+  ): Promise<EnhancedSelectorResult> {
+    tabDebug('Resolving single element locator:', selector);
+    try {
+      return await this._selectorResolver.resolveSingleSelector(
+        selector,
+        options
+      );
+    } catch (error) {
+      tabDebug('Failed to resolve single element locator:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resolve a single selector to a Playwright locator
+   */
   async refLocator(params: {
     element: string;
-    ref: string;
+    selector: ElementSelector;
   }): Promise<playwright.Locator> {
-    return (await this.refLocators([params]))[0];
+    const { selector } = params;
+
+    tabDebug('Using selector system for element:', params.element);
+    const result = await this._selectorResolver.resolveSingleSelector(selector);
+
+    if (result.error || !result.locator) {
+      const errorMessage = `Failed to resolve selector for element "${params.element}": ${result.error || 'Unknown error'}`;
+      const alternativesMessage = result.alternatives
+        ? `. Alternatives: ${JSON.stringify(result.alternatives)}`
+        : '';
+      throw new Error(errorMessage + alternativesMessage);
+    }
+
+    return result.locator.describe(params.element);
   }
+
+  /**
+   * Enhanced refLocators method supporting mixed legacy and new selector formats
+   */
   async refLocators(
-    params: { element: string; ref: string }[]
+    params: Array<{
+      element: string;
+      selector: ElementSelector;
+    }>
   ): Promise<playwright.Locator[]> {
-    const snapshot = await (this.page as PageEx)._snapshotForAI();
-    return params.map((param) => {
-      // Check if this is a custom ref mapping first
-      if (this._customRefMappings.has(param.ref)) {
-        const selector = this._customRefMappings.get(param.ref);
-        if (selector) {
-          return this.page.locator(selector).describe(param.element);
-        }
+    const selectors = params.map((p) => {
+      if (!p.selector) {
+        throw new Error(`Missing selector for element: ${p.element}`);
+      }
+      return p.selector;
+    });
+
+    const resolutionResults =
+      await this._selectorResolver.resolveSelectors(selectors);
+
+    const results: playwright.Locator[] = [];
+    for (let i = 0; i < resolutionResults.length; i++) {
+      const result = resolutionResults[i];
+      const param = params[i];
+
+      if (result.error || !result.locator) {
+        const errorMessage = `Failed to resolve selector for element "${param.element}": ${result.error || 'Unknown error'}`;
+        const alternativesMessage = result.alternatives
+          ? `. Alternatives: ${JSON.stringify(result.alternatives)}`
+          : '';
+        throw new Error(errorMessage + alternativesMessage);
       }
 
-      // Otherwise, use the standard ref lookup
-      if (!snapshot.includes(`[ref=${param.ref}]`)) {
-        const availableRefs = this._getAvailableRefs(snapshot);
-        throw new Error(
-          `Ref ${param.ref} not found. Available refs: [${availableRefs.join(
-            ', '
-          )}]. Element: ${
-            param.element
-          }. Consider capturing a new snapshot if the page has changed.`
-        );
-      }
-      return this.page.locator(`aria-ref=${param.ref}`).describe(param.element);
-    });
+      results.push(result.locator.describe(param.element));
+    }
+
+    return results;
   }
+
   async waitForTimeout(time: number) {
     if (this._javaScriptBlocked()) {
       await new Promise((f) => setTimeout(f, time));
@@ -540,19 +611,6 @@ export class Tab extends EventEmitter<TabEventsInterface> {
         time
       );
     });
-  }
-
-  private _getAvailableRefs(snapshot: string): string[] {
-    const refMatches = snapshot.match(/\[ref=([^\]]+)\]/g);
-    if (!refMatches) {
-      return [];
-    }
-    return refMatches
-      .map((match) => {
-        const refValue = REF_VALUE_REGEX.exec(match);
-        return refValue ? refValue[1] : '';
-      })
-      .filter(Boolean);
   }
 }
 export type ConsoleMessage = {

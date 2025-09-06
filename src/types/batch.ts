@@ -35,7 +35,7 @@ export const batchExecuteSchema = z.object({
     .array(batchStepSchema)
     .min(1)
     .describe(
-      'Array of steps to execute in sequence. Recommended for form filling (multiple type→click), multi-step navigation, any workflow with 2+ known steps. Saves 90% tokens vs individual calls. Example: [{tool:"browser_navigate",arguments:{url:"https://example.com"}},{tool:"browser_type",arguments:{element:"username",ref:"#user",text:"john"}},{tool:"browser_click",arguments:{element:"submit",ref:"#btn"}}]'
+      'Array of steps to execute in sequence. Recommended for form filling (multiple type→click), multi-step navigation, any workflow with 2+ known steps. Saves 90% tokens vs individual calls. Example: [{tool:"browser_navigate",arguments:{url:"https://example.com"}},{tool:"browser_type",arguments:{selectors:[{css:"#user"}],text:"john"}},{tool:"browser_click",arguments:{selectors:[{css:"#btn"}]}}]'
     ),
   stopOnFirstError: z
     .boolean()

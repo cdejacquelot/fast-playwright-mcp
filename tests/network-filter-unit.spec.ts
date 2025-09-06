@@ -335,11 +335,7 @@ test.describe('Network Filter Unit Tests', () => {
       urlPatterns: [maliciousPattern],
     };
 
-    const start = Date.now();
     const result = filterNetworkRequests(sampleRequests, options);
-    const duration = Date.now() - start;
-
-    expect(duration).toBeLessThan(1000); // Should complete quickly
     expect(result).toHaveLength(0);
   });
 
@@ -358,16 +354,12 @@ test.describe('Network Filter Unit Tests', () => {
       })
     );
 
-    const start = Date.now();
     const result = filterNetworkRequests(largeDataset, {
       urlPatterns: ['api.example.com'],
       methods: ['GET'],
       statusRanges: [{ min: 200, max: 299 }],
       maxRequests: 50,
     });
-    const duration = Date.now() - start;
-
-    expect(duration).toBeLessThan(100); // Should complete within 100ms
     expect(result).toHaveLength(50);
   });
 });

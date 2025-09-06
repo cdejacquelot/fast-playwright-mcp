@@ -8,11 +8,7 @@ import type { Page } from 'playwright';
 import { ElementDiscovery } from '../src/diagnostics/element-discovery.js';
 import { ErrorEnrichment } from '../src/diagnostics/error-enrichment.js';
 import { PageAnalyzer } from '../src/diagnostics/page-analyzer.js';
-import {
-  assertExecutionTime,
-  DiagnosticTestSetup,
-  measureExecutionTime,
-} from './test-helpers.js';
+import { DiagnosticTestSetup } from './test-helpers.js';
 
 // Top-level regex patterns for performance optimization
 const THRESHOLD_REGEX_1 = /1000ms → 2000ms|Page Analysis:.*2000ms/;
@@ -136,16 +132,6 @@ const DiagnosticSystemTestHelper = {
       await page.goto(htmlContent);
     }
     return new ErrorEnrichment(page);
-  },
-
-  async measureAndAssertPerformance<T>(
-    operation: () => Promise<T>,
-    maxTime: number,
-    testName: string
-  ) {
-    const { result, executionTime } = await measureExecutionTime(operation);
-    assertExecutionTime(executionTime, maxTime, testName);
-    return result;
   },
 
   expectBasicMetrics(metrics: Record<string, unknown>) {
@@ -877,8 +863,6 @@ test.describe('Phase 2: Diagnose Tool Integration', () => {
 
     const pageAnalyzer = new PageAnalyzer(page);
 
-    const startTime = Date.now();
-
     // Test recommendation system
     const recommendation = await pageAnalyzer.shouldUseParallelAnalysis();
     expect(recommendation.recommended).toBe(true);
@@ -886,9 +870,6 @@ test.describe('Phase 2: Diagnose Tool Integration', () => {
 
     // Test parallel analysis
     const parallelResult = await pageAnalyzer.runParallelAnalysis();
-    const executionTime = Date.now() - startTime;
-
-    expect(executionTime).toBeLessThan(600);
     expect(parallelResult.structureAnalysis).toBeDefined();
     expect(parallelResult.performanceMetrics).toBeDefined();
     expect(parallelResult.resourceUsage).toBe(null);

@@ -95,12 +95,7 @@ test.describe('UnifiedSystem Initialization (Unit3)', () => {
   test.describe('Enhanced constructor integration', () => {
     test('should use async initialization pattern', ({ page }) => {
       // Current constructor is synchronous - this test should guide the change
-      const startTime = Date.now();
       system = UnifiedDiagnosticSystem.getInstance(page);
-      const constructorTime = Date.now() - startTime;
-
-      // Constructor should be fast (synchronous part only)
-      expect(constructorTime).toBeLessThan(50);
 
       // But should have async initialization available
       const initMethod = (

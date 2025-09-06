@@ -8,60 +8,24 @@
 import type * as playwright from 'playwright';
 import type { Response } from '../response.js';
 import type { Tab } from '../tab.js';
-// Import BaseElementToolHandler properly
-import { BaseElementToolHandler } from '../tools/base-tool-handler.js';
 import { getErrorMessage } from './common-formatters.js';
 
 // These functions are deprecated - use BaseElementToolHandler methods instead
-export const resolveElementLocator = async (
-  tab: Tab,
-  params: { element?: string; ref?: string }
+export const resolveElementLocator = (
+  _tab: Tab,
+  _params: { element?: string; ref?: string }
 ): Promise<playwright.Locator | undefined> => {
-  class TempHandler extends BaseElementToolHandler<{
-    element?: string;
-    ref?: string;
-  }> {
-    constructor() {
-      super('temp');
-    }
-    protected executeToolLogic(): Promise<void> {
-      return Promise.resolve();
-    }
-
-    // Public wrapper to access protected method
-    resolveLocator(
-      tabInstance: Tab,
-      locatorParams: { element?: string; ref?: string }
-    ): Promise<playwright.Locator | undefined> {
-      return this.resolveElementLocator(tabInstance, locatorParams);
-    }
-  }
-
-  return await new TempHandler().resolveLocator(tab, params);
+  // This function is deprecated and no longer used
+  // All tools have been migrated to use selector arrays directly
+  return Promise.resolve(undefined);
 };
 
-export const validateElementParams = (params: {
+export const validateElementParams = (_params: {
   element?: string;
   ref?: string;
 }): void => {
-  class TempHandler extends BaseElementToolHandler<{
-    element?: string;
-    ref?: string;
-  }> {
-    constructor() {
-      super('temp');
-    }
-    protected executeToolLogic(): Promise<void> {
-      return Promise.resolve();
-    }
-
-    // Public wrapper to access protected method
-    validateParams(validationParams: { element?: string; ref?: string }): void {
-      this.validateElementParams(validationParams);
-    }
-  }
-
-  new TempHandler().validateParams(params);
+  // This function is deprecated and no longer used
+  // All tools have been migrated to use selector arrays directly
 };
 
 /**

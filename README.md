@@ -39,6 +39,16 @@ A Model Context Protocol (MCP) server that provides browser automation capabilit
   - Enhanced error handling with alternative element suggestions
   - Page structure analysis (iframes, modals, accessibility metrics)
   - Performance monitoring with execution time under 300ms
+- **Enhanced Selector System**. Unified element selection with multiple strategies:
+  - **Selector Arrays**: All element-based tools now support multiple selectors with automatic fallback
+  - **4 Selector Types**: 
+    - `ref`: System-generated element IDs from previous tool results (highest priority)
+    - `role`: ARIA roles with optional text matching (e.g., `{role: "button", text: "Submit"}`)
+    - `css`: Standard CSS selectors (e.g., `{css: "#submit-btn"}`)
+    - `text`: Text content search with optional tag filtering (e.g., `{text: "Click me", tag: "button"}`)
+  - **Intelligent Resolution**: Parallel CSS resolution, sequential role matching, automatic fallback
+  - **Multiple Match Handling**: When multiple elements match, returns candidate list for LLM selection
+  - **HTML Inspection**: New `browser_inspect_html` tool for intelligent content extraction with depth control
 
 ### Requirements
 - Node.js 18 or newer
@@ -213,9 +223,6 @@ Playwright MCP server supports following arguments. They can be provided in the 
   --config <path>              path to the configuration file.
   --device <device>            device to emulate, for example: "iPhone 15"
   --executable-path <path>     path to the browser executable.
-  --extension                  Connect to a running browser instance
-                               (Edge/Chrome only). Requires the "Playwright MCP
-                               Bridge" browser extension to be installed.
   --headless                   run browser in headless mode, headed by default
   --host <host>                host to bind server to. Default is localhost. Use
                                0.0.0.0 to bind to all interfaces.
@@ -452,24 +459,23 @@ http.createServer(async (req, res) => {
 
 - **browser_batch_execute**
   - Title: Batch Execute Browser Actions
-  - Description: Execute multiple browser actions in sequence with optimized response handling.RECOMMENDED:Use this tool instead of individual actions when performing multiple operations to significantly reduce token usage and improve performance.BY DEFAULT use for:form filling(multiple type→click),multi-step navigation,any workflow with 2+ known steps.Saves 90% tokens vs individual calls.globalExpectation:{includeSnapshot:false,snapshotOptions:{selector:"#app"},diffOptions:{enabled:true}}.Per-step override:steps[].expectation.Example:[{tool:"browser_navigate",arguments:{url:"https://example.com"}},{tool:"browser_type",arguments:{element:"username",ref:"#user",text:"john"}},{tool:"browser_click",arguments:{element:"submit",ref:"#btn"}}].
+  - Description: Execute multiple browser actions in sequence. PREFER over individual tools for 2+ operations.
   - Parameters:
-    - `steps` (array): Array of steps to execute in sequence
+    - `steps` (array): Array of steps to execute in sequence. Recommended for form filling (multiple type→click), multi-step navigation, any workflow with 2+ known steps. Saves 90% tokens vs individual calls. Example: [{tool:"browser_navigate",arguments:{url:"https://example.com"}},{tool:"browser_type",arguments:{selectors:[{css:"#user"}],text:"john"}},{tool:"browser_click",arguments:{selectors:[{css:"#btn"}]}}]
     - `stopOnFirstError` (boolean, optional): Stop entire batch on first error
-    - `globalExpectation` (optional): Default expectation for all steps
+    - `globalExpectation` (optional): Default expectation for all steps. Recommended: {includeSnapshot:false,snapshotOptions:{selector:"#app"},diffOptions:{enabled:true}}. Per-step override with steps[].expectation
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_click**
-  - Title: Click
-  - Description: Perform click on web page.USE batch_execute for multi-click workflows.expectation:{includeSnapshot:false} when next action follows immediately,true to verify result.diffOptions:{enabled:true,format:"minimal"} shows only changes(saves 80% tokens).snapshotOptions:{selector:".result"} to focus on result area.doubleClick:true for double-click,button:"right" for context menu.
+  - Title: Perform click on web page
+  - Description: Perform click on web page
   - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-    - `doubleClick` (boolean, optional): Whether to perform a double click instead of a single click
-    - `button` (string, optional): Button to click, defaults to left
-    - `expectation` (object, optional): undefined
+    - `selectors` (array): Array of element selectors (max 5). Selectors are tried in order until one succeeds (fallback mechanism). Multiple matches trigger an error with candidate list. Supports: ref (highest priority), CSS (#id, .class, tag), role (button, textbox, etc.), text content. Example: [{css: "#submit"}, {role: "button", text: "Submit"}] - tries ID first, falls back to role+text
+    - `doubleClick` (boolean, optional): Double-click if true
+    - `button` (string, optional): Mouse button (default: left)
+    - `expectation` (object, optional): Page state capture config. Use batch_execute for multi-clicks
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
@@ -485,7 +491,8 @@ http.createServer(async (req, res) => {
 - **browser_console_messages**
   - Title: Get console messages
   - Description: Returns all console messages
-  - Parameters: None
+  - Parameters:
+    - `consoleOptions` (object, optional): undefined
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
@@ -510,35 +517,32 @@ http.createServer(async (req, res) => {
 
 - **browser_drag**
   - Title: Drag mouse
-  - Description: Perform drag and drop between two elements.expectation:{includeSnapshot:true,snapshotOptions:{selector:".drop-zone"}} to verify drop result.diffOptions:{enabled:true} shows only what moved.CONSIDER batch_execute if part of larger workflow.
+  - Description: Perform drag and drop between two elements
   - Parameters:
-    - `startElement` (string): Human-readable source element description used to obtain the permission to interact with the element
-    - `startRef` (string): Exact source element reference from the page snapshot
-    - `endElement` (string): Human-readable target element description used to obtain the permission to interact with the element
-    - `endRef` (string): Exact target element reference from the page snapshot
-    - `expectation` (object, optional): undefined
+    - `startSelectors` (array): Source element selectors for drag start
+    - `endSelectors` (array): Target element selectors for drag end
+    - `expectation` (object, optional): Page state after drag. Use batch_execute for workflows
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_evaluate**
   - Title: Evaluate JavaScript
-  - Description: Evaluate JavaScript expression on page or element.Returns evaluation result.USE CASES:extract data,modify DOM,trigger events.expectation:{includeSnapshot:false} for data extraction,true if modifying page.element+ref to run on specific element.CONSIDER batch_execute for multiple evaluations.
+  - Description: Evaluate JavaScript expression on page or element and return result
   - Parameters:
-    - `function` (string): () => { /* code */ } or (element) => { /* code */ } when element is provided
-    - `element` (string, optional): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string, optional): Exact target element reference from the page snapshot
-    - `expectation` (object, optional): undefined
+    - `function` (string): JS function: () => {...} or (element) => {...}
+    - `selectors` (array, optional): Optional element selectors. If provided, function receives element as parameter
+    - `expectation` (object, optional): Page state config. false for data extraction, true for DOM changes
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_file_upload**
   - Title: Upload files
-  - Description: Upload one or multiple files to file input.paths:["/path/file1.jpg","/path/file2.pdf"] for multiple files.expectation:{includeSnapshot:true,snapshotOptions:{selector:"form"}} to verify upload.Must be triggered after file input interaction.USE batch_execute for click→upload workflows.
+  - Description: Upload one or multiple files to file input
   - Parameters:
-    - `paths` (array): The absolute paths to the files to upload. Can be a single file or multiple files.
-    - `expectation` (object, optional): undefined
+    - `paths` (array): Absolute paths to upload (array)
+    - `expectation` (object, optional): Page state config. Use batch_execute for click→upload
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
@@ -560,74 +564,93 @@ http.createServer(async (req, res) => {
 
 - **browser_handle_dialog**
   - Title: Handle a dialog
-  - Description: Handle a dialog(alert,confirm,prompt).accept:true to accept,false to dismiss.promptText:"answer" for prompt dialogs.expectation:{includeSnapshot:true} to see page after dialog handling.USE batch_execute if dialog appears during workflow.
+  - Description: Handle a dialog (alert, confirm, prompt)
   - Parameters:
-    - `accept` (boolean): Whether to accept the dialog.
-    - `promptText` (string, optional): The text of the prompt in case of a prompt dialog.
-    - `expectation` (object, optional): undefined
+    - `accept` (boolean): Accept (true) or dismiss (false)
+    - `promptText` (string, optional): Text for prompt dialogs
+    - `expectation` (object, optional): Page state after dialog. Use batch_execute for workflows
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_hover**
   - Title: Hover mouse
-  - Description: Hover over element on page.expectation:{includeSnapshot:true} to capture tooltips/dropdown menus,false for simple hover.snapshotOptions:{selector:".tooltip"} to focus on tooltip area.Often followed by click - use batch_execute for hover→click sequences.
+  - Description: Hover over element on page
   - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-    - `expectation` (object, optional): undefined
+    - `selectors` (array): Array of element selectors (max 5). Selectors are tried in order until one succeeds (fallback mechanism). Multiple matches trigger an error with candidate list. Supports: ref (highest priority), CSS (#id, .class, tag), role (button, textbox, etc.), text content. Example: [{css: "#submit"}, {role: "button", text: "Submit"}] - tries ID first, falls back to role+text
+    - `expectation` (object, optional): Page state after hover. Use batch_execute for hover→click
+  - Read-only: **true**
+
+<!-- NOTE: This has been generated via update-readme.js -->
+
+- **browser_inspect_html**
+  - Title: HTML inspection
+  - Description: Extract and analyze HTML content from web pages with intelligent filtering and size control. Optimized for LLM consumption with configurable depth, format options, and automatic truncation.
+  - Parameters:
+    - `selectors` (array): Array of element selectors to inspect
+    - `depth` (number, optional): Maximum hierarchy depth to extract
+    - `includeStyles` (boolean, optional): Include computed CSS styles
+    - `maxSize` (number, optional): Maximum size in bytes (1KB-500KB)
+    - `format` (string, optional): Output format
+    - `includeAttributes` (boolean, optional): Include element attributes
+    - `preserveWhitespace` (boolean, optional): Preserve whitespace in content
+    - `excludeSelector` (string, optional): CSS selector to exclude elements
+    - `includeSuggestions` (boolean, optional): Include CSS selector suggestions in output
+    - `includeChildren` (boolean, optional): Include child elements in extraction
+    - `optimizeForLLM` (boolean, optional): Optimize extracted HTML for LLM consumption
+    - `expectation` (object, optional): Page state config (minimal for HTML inspection)
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_navigate**
   - Title: Navigate to a URL
-  - Description: Navigate to a URL.expectation:{includeSnapshot:true} to see what loaded,false if you know what to do next.snapshotOptions:{selector:"#content"} to focus on main content(saves 50% tokens).diffOptions:{enabled:true} when revisiting pages to see only changes.CONSIDER batch_execute for navigate→interact workflows.
+  - Description: Navigate to a URL
   - Parameters:
     - `url` (string): The URL to navigate to
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Page state after navigation
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_navigate_back**
-  - Title: Go back
-  - Description: Go back to previous page.expectation:{includeSnapshot:true} to see previous page,false if continuing workflow.diffOptions:{enabled:true} shows only what changed from forward page.USE batch_execute for back→interact sequences.
+  - Title: Go back to previous page
+  - Description: Go back to previous page
   - Parameters:
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Page state after going back
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_navigate_forward**
-  - Title: Go forward
-  - Description: Go forward to next page.expectation:{includeSnapshot:true} to see next page,false if continuing workflow.diffOptions:{enabled:true} shows only what changed from previous page.USE batch_execute for forward→interact sequences.
+  - Title: Go forward to next page
+  - Description: Go forward to next page
   - Parameters:
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Page state after going forward
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_network_requests**
   - Title: List network requests
-  - Description: Returns network requests since loading the page with optional filtering. urlPatterns:["api/users"] to filter by URL patterns. excludeUrlPatterns:["analytics"] to exclude specific patterns. statusRanges:[{min:200,max:299}] for success codes only. methods:["GET","POST"] to filter by HTTP method. maxRequests:10 to limit results. newestFirst:false for chronological order. Supports regex patterns for advanced filtering.
+  - Description: Returns network requests since loading the page with optional filtering
   - Parameters:
-    - `urlPatterns` (array, optional): URL patterns to include (supports regex)
-    - `excludeUrlPatterns` (array, optional): URL patterns to exclude (supports regex)
-    - `statusRanges` (array, optional): Status code ranges to include
-    - `methods` (array, optional): HTTP methods to filter by
-    - `maxRequests` (number, optional): Maximum number of results to return (default: 20)
-    - `newestFirst` (boolean, optional): Sort order - true for newest first (default: true)
+    - `urlPatterns` (array, optional): URL patterns to filter (supports regex)
+    - `excludeUrlPatterns` (array, optional): URL patterns to exclude (takes precedence)
+    - `statusRanges` (array, optional): Status code ranges (e.g., [{min:200,max:299}])
+    - `methods` (array, optional): HTTP methods to filter
+    - `maxRequests` (number, optional): Max requests to return (default: 20)
+    - `newestFirst` (boolean, optional): Order by timestamp (default: newest first)
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_press_key**
   - Title: Press a key
-  - Description: Press a key on the keyboard.Common keys:Enter,Escape,ArrowUp/Down/Left/Right,Tab,Backspace.expectation:{includeSnapshot:false} for navigation keys,true for content changes.CONSIDER batch_execute for multiple key presses.
+  - Description: Press a key on the keyboard
   - Parameters:
-    - `key` (string): Name of the key to press or a character to generate, such as `ArrowLeft` or `a`
-    - `expectation` (object, optional): undefined
+    - `key` (string): Key to press
+    - `expectation` (object, optional): Page state config. Use batch_execute for multiple keys
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
@@ -645,61 +668,58 @@ http.createServer(async (req, res) => {
 
 - **browser_select_option**
   - Title: Select option
-  - Description: Select option in dropdown.values:["option1","option2"] for multi-select.expectation:{includeSnapshot:false} when part of form filling(use batch),true to verify selection.snapshotOptions:{selector:"form"} for form context.USE batch_execute for form workflows with multiple selects.
+  - Description: Select option in dropdown
   - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
-    - `values` (array): Array of values to select in the dropdown. This can be a single value or multiple values.
-    - `expectation` (object, optional): undefined
+    - `selectors` (array): Array of element selectors (max 5). Selectors are tried in order until one succeeds (fallback mechanism). Multiple matches trigger an error with candidate list. Supports: ref (highest priority), CSS (#id, .class, tag), role (button, textbox, etc.), text content. Example: [{css: "#submit"}, {role: "button", text: "Submit"}] - tries ID first, falls back to role+text
+    - `values` (array): Values to select (array)
+    - `expectation` (object, optional): Page state after selection. Use batch_execute for forms
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_snapshot**
   - Title: Page snapshot
-  - Description: Capture accessibility snapshot of current page.AVOID calling directly - use expectation:{includeSnapshot:true} on other tools instead.USE CASES:Initial page inspection,debugging when other tools didn't capture needed info.snapshotOptions:{selector:"#content"} to focus on specific area.
+  - Description: Capture accessibility snapshot of current page
   - Parameters:
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Page state config
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_take_screenshot**
   - Title: Take a screenshot
-  - Description: Take a screenshot of current page.Returns image data.expectation:{includeSnapshot:false} to avoid redundant accessibility tree(screenshot≠snapshot).imageOptions:{quality:50,format:"jpeg"} for 70% size reduction.fullPage:true for entire page,element+ref for specific element.USE CASES:visual verification,documentation,error capture.
+  - Description: Take a screenshot of current page and return image data
   - Parameters:
     - `type` (string, optional): Image format for the screenshot. Default is png.
     - `filename` (string, optional): File name to save the screenshot to. Defaults to `page-{timestamp}.{png|jpeg}` if not specified.
-    - `element` (string, optional): Human-readable element description used to obtain permission to screenshot the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.
-    - `ref` (string, optional): Exact target element reference from the page snapshot. If not provided, the screenshot will be taken of viewport. If ref is provided, element must be provided too.
+    - `selectors` (array, optional): Optional element selectors for element screenshots. If not provided, viewport screenshot will be taken.
     - `fullPage` (boolean, optional): When true, takes a screenshot of the full scrollable page, instead of the currently visible viewport. Cannot be used with element screenshots.
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Additional page state config
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_type**
   - Title: Type text
-  - Description: Type text into editable element.FOR FORMS:Use batch_execute to fill multiple fields efficiently.slowly:true for auto-complete fields,submit:true to press Enter after.expectation:{includeSnapshot:false} when filling multiple fields(use batch),true for final verification.snapshotOptions:{selector:"form"} to focus on form only.diffOptions:{enabled:true} shows only what changed in form.
+  - Description: Type text into editable element
   - Parameters:
-    - `element` (string): Human-readable element description used to obtain permission to interact with the element
-    - `ref` (string): Exact target element reference from the page snapshot
+    - `selectors` (array): Array of element selectors (max 5) supporting ref, role, CSS, or text-based selection
     - `text` (string): Text to type into the element
-    - `submit` (boolean, optional): Whether to submit entered text (press Enter after)
-    - `slowly` (boolean, optional): Whether type one character at a time. Useful for triggering key handlers in the page. By default entire text is filled in at once.
-    - `expectation` (object, optional): undefined
+    - `submit` (boolean, optional): Press Enter after typing if true
+    - `slowly` (boolean, optional): Type slowly for auto-complete if true
+    - `expectation` (object, optional): Page state config. Use batch_execute for forms
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_wait_for**
   - Title: Wait for
-  - Description: Wait for text to appear/disappear or time to pass.PREFER text-based wait over time for reliability.For loading states:wait for text:"Loading..." textGone:true.For dynamic content:wait for specific text to appear.expectation:{includeSnapshot:true,snapshotOptions:{selector:"#status"},diffOptions:{enabled:true}} shows only what changed.AVOID:fixed time waits unless necessary.
+  - Description: Wait for text to appear or disappear or a specified time to pass
   - Parameters:
-    - `time` (number, optional): The time to wait in seconds
-    - `text` (string, optional): The text to wait for
-    - `textGone` (string, optional): The text to wait for to disappear
-    - `expectation` (object, optional): undefined
+    - `time` (number, optional): Wait time in seconds
+    - `text` (string, optional): undefined
+    - `textGone` (string, optional): undefined
+    - `expectation` (object, optional): Page state after wait
   - Read-only: **true**
 
 </details>
@@ -710,39 +730,39 @@ http.createServer(async (req, res) => {
 
 - **browser_tab_close**
   - Title: Close a tab
-  - Description: Close a tab.index:N to close specific tab,omit to close current.expectation:{includeSnapshot:false} usually sufficient,true to verify remaining tabs.USE batch_execute for multi-tab cleanup.
+  - Description: Close a tab by index or close current tab
   - Parameters:
-    - `index` (number, optional): The index of the tab to close. Closes current tab if not provided.
-    - `expectation` (object, optional): undefined
+    - `index` (number, optional): Tab index to close (omit for current)
+    - `expectation` (object, optional): Page state after close
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_tab_list**
   - Title: List tabs
-  - Description: List browser tabs.Always returns tab list with titles and URLs.expectation:{includeSnapshot:false} for just tab info,true to also see current tab content.USE before tab_select to find right tab.
+  - Description: List browser tabs with titles and URLs
   - Parameters:
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Page state config
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_tab_new**
   - Title: Open a new tab
-  - Description: Open a new tab.url:"https://example.com" to navigate immediately,omit for blank tab.expectation:{includeSnapshot:true} to see new tab,false if opening for later use.CONSIDER batch_execute for new_tab→navigate→interact.
+  - Description: Open a new tab
   - Parameters:
-    - `url` (string, optional): The URL to navigate to in the new tab. If not provided, the new tab will be blank.
-    - `expectation` (object, optional): undefined
+    - `url` (string, optional): URL for new tab (optional)
+    - `expectation` (object, optional): Page state of new tab
   - Read-only: **true**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_tab_select**
   - Title: Select a tab
-  - Description: Select a tab by index.expectation:{includeSnapshot:true} to see selected tab content,false if you know what's there.USE batch_execute for tab_select→interact workflows.
+  - Description: Select a tab by index
   - Parameters:
     - `index` (number): The index of the tab to select
-    - `expectation` (object, optional): undefined
+    - `expectation` (object, optional): Page state after tab switch
   - Read-only: **true**
 
 </details>
@@ -765,26 +785,26 @@ http.createServer(async (req, res) => {
 
 - **browser_mouse_click_xy**
   - Title: Click
-  - Description: Click at specific coordinates.Requires --caps=vision.x,y:click position.expectation:{includeSnapshot:true} to verify result.PREFER browser_click with element ref over coordinates.USE batch_execute for coordinate-based workflows.
+  - Description: Click at specific coordinates
   - Parameters:
     - `element` (string): undefined
-    - `x` (number): X coordinate
-    - `y` (number): Y coordinate
-    - `expectation` (object, optional): undefined
+    - `x` (number): X coordinate (requires --caps=vision)
+    - `y` (number): Y coordinate (requires --caps=vision)
+    - `expectation` (object, optional): Page state after click. Prefer element ref over coords
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->
 
 - **browser_mouse_drag_xy**
   - Title: Drag mouse
-  - Description: Drag from one coordinate to another.Requires --caps=vision.startX,startY→endX,endY.expectation:{includeSnapshot:true,snapshotOptions:{selector:".drop-zone"}} to verify.PREFER browser_drag with element refs over coordinates.
+  - Description: Drag from one coordinate to another
   - Parameters:
     - `element` (string): undefined
-    - `startX` (number): Start X coordinate
-    - `startY` (number): Start Y coordinate
-    - `endX` (number): End X coordinate
-    - `endY` (number): End Y coordinate
-    - `expectation` (object, optional): undefined
+    - `startX` (number): Start X (requires --caps=vision)
+    - `startY` (number): Start Y (requires --caps=vision)
+    - `endX` (number): End X
+    - `endY` (number): End Y
+    - `expectation` (object, optional): Page state after drag. Prefer element refs over coords
   - Read-only: **false**
 
 <!-- NOTE: This has been generated via update-readme.js -->

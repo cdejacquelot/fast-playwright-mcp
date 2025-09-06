@@ -174,10 +174,8 @@ export class PageAnalyzer extends DiagnosticBase {
 
   private async updateFrameMetadata(frame: playwright.Frame): Promise<void> {
     try {
-      const elementCount = await frame.$$eval(
-        '*',
-        (elements: Element[]) => elements.length
-      );
+      const elements = await frame.$$('*');
+      const elementCount = elements.length;
       this.frameManager.updateElementCount(frame, elementCount);
     } catch {
       // Failed to count frame elements - frame may be inaccessible

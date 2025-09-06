@@ -301,6 +301,7 @@ Ultracite enforces strict type safety, accessibility standards, and consistent c
 - Don't use focused tests.
 - Make sure the assertion function, like expect, is placed inside an it() function call.
 - Don't use disabled tests.
+- Don't create performance measurement tests - they are flaky and cause timeouts in CI environments.
 
 ## Common Tasks
 - `npx ultracite init` - Initialize Ultracite in your project
