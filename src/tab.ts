@@ -3,9 +3,16 @@ import type * as playwright from 'playwright';
 import { TIMEOUTS } from './config/constants.js';
 import type { Context } from './context.js';
 import { ManualPromise } from './manual-promise.js';
+import { SelectorResolver } from './services/selector-resolver.js';
 import type { ModalState } from './tools/tool.js';
 import { callOnPageNoTrace, waitForCompletion } from './tools/utils.js';
 import type { CustomRefOptions } from './types/batch.js';
+import type {
+  BatchResolutionOptions,
+  ElementSelector,
+  EnhancedSelectorResult,
+  SelectorResolutionResult,
+} from './types/selectors.js';
 import { logUnhandledError } from './utils/log.js';
 
 // Regex constants
@@ -54,6 +61,7 @@ export class Tab extends EventEmitter<TabEventsInterface> {
   }[] = [];
   private readonly _customRefMappings: Map<string, string> = new Map();
   private _customRefCounter = 0;
+  private readonly _selectorResolver: SelectorResolver;
   private readonly _navigationState: {
     isNavigating: boolean;
     lastNavigationStart: number;
@@ -71,6 +79,7 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     this.context = context;
     this.page = page;
     this._onPageClose = onPageClose;
+    this._selectorResolver = new SelectorResolver(page);
     page.on('console', (event) =>
       this._handleConsoleMessage(messageToConsoleMessage(event))
     );
@@ -496,39 +505,159 @@ export class Tab extends EventEmitter<TabEventsInterface> {
     return `element_${this._customRefCounter}`;
   }
 
-  async refLocator(params: {
-    element: string;
-    ref: string;
-  }): Promise<playwright.Locator> {
-    return (await this.refLocators([params]))[0];
+  /**
+   * Resolve multiple element selectors using the new unified selector system
+   */
+  async resolveElementLocators(
+    selectors: ElementSelector[],
+    options?: BatchResolutionOptions
+  ): Promise<SelectorResolutionResult[]> {
+    tabDebug(`Resolving ${selectors.length} element locators`);
+    try {
+      return await this._selectorResolver.resolveSelectors(selectors, options);
+    } catch (error) {
+      tabDebug('Failed to resolve element locators:', error);
+      throw error;
+    }
   }
-  async refLocators(
-    params: { element: string; ref: string }[]
-  ): Promise<playwright.Locator[]> {
-    const snapshot = await (this.page as PageEx)._snapshotForAI();
-    return params.map((param) => {
-      // Check if this is a custom ref mapping first
-      if (this._customRefMappings.has(param.ref)) {
-        const selector = this._customRefMappings.get(param.ref);
-        if (selector) {
-          return this.page.locator(selector).describe(param.element);
-        }
-      }
 
-      // Otherwise, use the standard ref lookup
-      if (!snapshot.includes(`[ref=${param.ref}]`)) {
-        const availableRefs = this._getAvailableRefs(snapshot);
+  /**
+   * Resolve a single element selector with enhanced metadata
+   */
+  async resolveSingleElementLocator(
+    selector: ElementSelector,
+    options?: { timeoutMs?: number }
+  ): Promise<EnhancedSelectorResult> {
+    tabDebug('Resolving single element locator:', selector);
+    try {
+      return await this._selectorResolver.resolveSingleSelector(
+        selector,
+        options
+      );
+    } catch (error) {
+      tabDebug('Failed to resolve single element locator:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Enhanced refLocator method that supports both legacy and new selector formats
+   * Maintains backward compatibility while enabling new selector types
+   */
+  async refLocator(
+    params:
+      | { element: string; ref: string; selector?: never }
+      | { element: string; ref?: never; selector: ElementSelector }
+  ): Promise<playwright.Locator> {
+    // Legacy ref-based call
+    if (params.ref && !params.selector) {
+      return (
+        await this.refLocators([{ element: params.element, ref: params.ref }])
+      )[0];
+    }
+
+    // New selector-based call
+    if (params.selector && !params.ref) {
+      tabDebug('Using new selector system for element:', params.element);
+      const result = await this._selectorResolver.resolveSingleSelector(
+        params.selector
+      );
+
+      if (result.error || !result.locator) {
         throw new Error(
-          `Ref ${param.ref} not found. Available refs: [${availableRefs.join(
-            ', '
-          )}]. Element: ${
-            param.element
-          }. Consider capturing a new snapshot if the page has changed.`
+          `Failed to resolve selector for element "${params.element}": ${
+            result.error || 'Unknown error'
+          }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
         );
       }
-      return this.page.locator(`aria-ref=${param.ref}`).describe(param.element);
-    });
+
+      return result.locator.describe(params.element);
+    }
+
+    throw new Error('Either ref or selector must be provided, but not both');
   }
+
+  /**
+   * Enhanced refLocators method supporting mixed legacy and new selector formats
+   */
+  async refLocators(
+    params: Array<
+      | { element: string; ref: string; selector?: never }
+      | { element: string; ref?: never; selector: ElementSelector }
+    >
+  ): Promise<playwright.Locator[]> {
+    // Separate legacy and new selector calls
+    const legacyParams = params.filter((p) => p.ref && !p.selector) as {
+      element: string;
+      ref: string;
+    }[];
+    const selectorParams = params.filter((p) => p.selector && !p.ref) as {
+      element: string;
+      selector: ElementSelector;
+    }[];
+
+    const results: playwright.Locator[] = [];
+
+    // Handle legacy ref-based params using existing logic
+    if (legacyParams.length > 0) {
+      const snapshot = await (this.page as PageEx)._snapshotForAI();
+      const legacyLocators = legacyParams.map((param) => {
+        // Check if this is a custom ref mapping first
+        if (this._customRefMappings.has(param.ref)) {
+          const selector = this._customRefMappings.get(param.ref);
+          if (selector) {
+            return this.page.locator(selector).describe(param.element);
+          }
+        }
+
+        // Otherwise, use the standard ref lookup
+        if (!snapshot.includes(`[ref=${param.ref}]`)) {
+          const availableRefs = this._getAvailableRefs(snapshot);
+          throw new Error(
+            `Ref ${param.ref} not found. Available refs: [${availableRefs.join(
+              ', '
+            )}]. Element: ${
+              param.element
+            }. Consider capturing a new snapshot if the page has changed.`
+          );
+        }
+        return this.page
+          .locator(`aria-ref=${param.ref}`)
+          .describe(param.element);
+      });
+      results.push(...legacyLocators);
+    }
+
+    // Handle new selector-based params
+    if (selectorParams.length > 0) {
+      const selectors = selectorParams.map((p) => {
+        if (!p.selector) {
+          throw new Error(`Missing selector for element: ${p.element}`);
+        }
+        return p.selector;
+      });
+      const resolutionResults =
+        await this._selectorResolver.resolveSelectors(selectors);
+
+      for (let i = 0; i < resolutionResults.length; i++) {
+        const result = resolutionResults[i];
+        const param = selectorParams[i];
+
+        if (result.error || !result.locator) {
+          throw new Error(
+            `Failed to resolve selector for element "${param.element}": ${
+              result.error || 'Unknown error'
+            }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
+          );
+        }
+
+        results.push(result.locator.describe(param.element));
+      }
+    }
+
+    return results;
+  }
+
   async waitForTimeout(time: number) {
     if (this._javaScriptBlocked()) {
       await new Promise((f) => setTimeout(f, time));

@@ -3,9 +3,19 @@ import { z } from 'zod';
 import type { Response } from '../response.js';
 import { expectationSchema } from '../schemas/expectation.js';
 import type { Tab } from '../tab.js';
+import { elementSelectorSchema } from '../types/selectors.js';
 import { formatObject } from '../utils/codegen.js';
 import { defineTabTool } from './tool.js';
 import { generateLocator } from './utils.js';
+
+// Enhanced selector schema for browser tools
+const selectorsSchema = z
+  .array(elementSelectorSchema)
+  .min(1)
+  .max(5)
+  .describe(
+    'Array of element selectors (max 5) supporting ref, role, CSS, or text-based selection'
+  );
 
 const screenshotSchema = z
   .object({
@@ -19,17 +29,10 @@ const screenshotSchema = z
       .describe(
         'File name to save the screenshot to. Defaults to `page-{timestamp}.{png|jpeg}` if not specified.'
       ),
-    element: z
-      .string()
+    selectors: selectorsSchema
       .optional()
       .describe(
-        'Human-readable element description used to obtain permission to screenshot the element. If not provided, the screenshot will be taken of viewport. If element is provided, ref must be provided too.'
-      ),
-    ref: z
-      .string()
-      .optional()
-      .describe(
-        'System-generated element ID from previous tool results (e.g., "rNODE-45-1"). Never use custom values. If not provided, the screenshot will be taken of viewport. If ref is provided, element must be provided too.'
+        'Optional element selectors for element screenshots. If not provided, viewport screenshot will be taken.'
       ),
     fullPage: z
       .boolean()
@@ -41,16 +44,7 @@ const screenshotSchema = z
   })
   .refine(
     (data) => {
-      return !!data.element === !!data.ref;
-    },
-    {
-      message: 'Both element and ref must be provided or neither.',
-      path: ['ref', 'element'],
-    }
-  )
-  .refine(
-    (data) => {
-      return !(data.fullPage && (data.element || data.ref));
+      return !(data.fullPage && data.selectors && data.selectors.length > 0);
     },
     {
       message: 'fullPage cannot be used with element screenshots.',
@@ -84,15 +78,15 @@ function createScreenshotOptions(
 }
 
 function isElementScreenshotRequest(params: ScreenshotParams): boolean {
-  return !!(params.element && params.ref);
+  return !!(params.selectors && params.selectors.length > 0);
 }
 
 function getScreenshotTarget(
   params: ScreenshotParams,
   isElementScreenshot: boolean
 ): string {
-  if (isElementScreenshot && params.element) {
-    return params.element;
+  if (isElementScreenshot) {
+    return 'element';
   }
   return params.fullPage ? 'full page' : 'viewport';
 }
@@ -102,10 +96,25 @@ async function getScreenshotLocator(
   params: ScreenshotParams,
   isElementScreenshot: boolean
 ): Promise<playwright.Locator | null> {
-  if (!(isElementScreenshot && params.element && params.ref)) {
+  if (!(isElementScreenshot && params.selectors)) {
     return null;
   }
-  return await tab.refLocator({ element: params.element, ref: params.ref });
+
+  const resolutionResults = await tab.resolveElementLocators(params.selectors);
+  const successfulResults = resolutionResults.filter(
+    (r) => r.locator && !r.error
+  );
+
+  if (successfulResults.length === 0) {
+    const errors = resolutionResults
+      .map((r) => r.error || 'Unknown error')
+      .join(', ');
+    throw new Error(
+      `Failed to resolve element selectors for screenshot: ${errors}`
+    );
+  }
+
+  return successfulResults[0].locator;
 }
 
 async function addScreenshotCode(
