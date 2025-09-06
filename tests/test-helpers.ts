@@ -229,33 +229,6 @@ export function createMockElements(
 }
 
 /**
- * Measure execution time of an async function
- */
-export async function measureExecutionTime<T>(
-  fn: () => Promise<T>
-): Promise<{ result: T; executionTime: number }> {
-  const startTime = Date.now();
-  const result = await fn();
-  const executionTime = Date.now() - startTime;
-  return { result, executionTime };
-}
-
-/**
- * Assert that execution time is within acceptable bounds
- */
-export function assertExecutionTime(
-  executionTime: number,
-  maxTime: number,
-  testName: string
-): void {
-  if (executionTime > maxTime) {
-    throw new Error(
-      `${testName} took ${executionTime}ms, expected < ${maxTime}ms`
-    );
-  }
-}
-
-/**
  * Check if console output contains expected warning patterns
  */
 export function expectConsoleWarning(

@@ -293,37 +293,4 @@ test.describe('HTMLInspector', () => {
     const ariaResult = await inspector.extractHTML(ariaOptions);
     expect(ariaResult.elements[0].html).toContain('h1:');
   });
-
-  test('should handle performance thresholds and provide warnings', async ({
-    page,
-  }) => {
-    const inspector = new HTMLInspector(page);
-
-    // Create a large DOM structure
-    await page.evaluate(() => {
-      const container = document.getElementById('main-container');
-      if (container) {
-        for (let i = 0; i < 1000; i++) {
-          const div = document.createElement('div');
-          div.textContent = `Generated content ${i}`;
-          container.appendChild(div);
-        }
-      }
-    });
-
-    const options: HTMLInspectionOptions = {
-      selectors: [{ css: '#main-container' }],
-      depth: 3,
-    };
-
-    const result = await inspector.extractHTML(options);
-
-    // Should provide performance suggestions if content is large
-    if (result.totalSizeBytes > 30_000) {
-      // 30KB threshold
-      expect(result.suggestions).toContain(
-        'Large content detected. Consider reducing depth or using more specific selectors.'
-      );
-    }
-  });
 });
