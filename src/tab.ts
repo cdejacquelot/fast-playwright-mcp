@@ -16,7 +16,6 @@ import type {
 import { logUnhandledError } from './utils/log.js';
 
 // Regex constants
-const REF_VALUE_REGEX = /\[ref=([^\]]+)\]/;
 
 type PageEx = playwright.Page & {
   _snapshotForAI: () => Promise<string>;
@@ -541,118 +540,61 @@ export class Tab extends EventEmitter<TabEventsInterface> {
   }
 
   /**
-   * Enhanced refLocator method that supports both legacy and new selector formats
-   * Maintains backward compatibility while enabling new selector types
+   * Resolve a single selector to a Playwright locator
    */
-  async refLocator(
-    params:
-      | { element: string; ref: string; selector?: never }
-      | { element: string; ref?: never; selector: ElementSelector }
-  ): Promise<playwright.Locator> {
-    // Legacy ref-based call
-    if (params.ref && !params.selector) {
-      return (
-        await this.refLocators([{ element: params.element, ref: params.ref }])
-      )[0];
-    }
+  async refLocator(params: {
+    element: string;
+    selector: ElementSelector;
+  }): Promise<playwright.Locator> {
+    const { selector } = params;
 
-    // New selector-based call
-    if (params.selector && !params.ref) {
-      tabDebug('Using new selector system for element:', params.element);
-      const result = await this._selectorResolver.resolveSingleSelector(
-        params.selector
+    tabDebug('Using selector system for element:', params.element);
+    const result = await this._selectorResolver.resolveSingleSelector(selector);
+
+    if (result.error || !result.locator) {
+      throw new Error(
+        `Failed to resolve selector for element "${params.element}": ${
+          result.error || 'Unknown error'
+        }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
       );
-
-      if (result.error || !result.locator) {
-        throw new Error(
-          `Failed to resolve selector for element "${params.element}": ${
-            result.error || 'Unknown error'
-          }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
-        );
-      }
-
-      return result.locator.describe(params.element);
     }
 
-    throw new Error('Either ref or selector must be provided, but not both');
+    return result.locator.describe(params.element);
   }
 
   /**
    * Enhanced refLocators method supporting mixed legacy and new selector formats
    */
   async refLocators(
-    params: Array<
-      | { element: string; ref: string; selector?: never }
-      | { element: string; ref?: never; selector: ElementSelector }
-    >
-  ): Promise<playwright.Locator[]> {
-    // Separate legacy and new selector calls
-    const legacyParams = params.filter((p) => p.ref && !p.selector) as {
-      element: string;
-      ref: string;
-    }[];
-    const selectorParams = params.filter((p) => p.selector && !p.ref) as {
+    params: Array<{
       element: string;
       selector: ElementSelector;
-    }[];
+    }>
+  ): Promise<playwright.Locator[]> {
+    const selectors = params.map((p) => {
+      if (!p.selector) {
+        throw new Error(`Missing selector for element: ${p.element}`);
+      }
+      return p.selector;
+    });
+
+    const resolutionResults =
+      await this._selectorResolver.resolveSelectors(selectors);
 
     const results: playwright.Locator[] = [];
+    for (let i = 0; i < resolutionResults.length; i++) {
+      const result = resolutionResults[i];
+      const param = params[i];
 
-    // Handle legacy ref-based params using existing logic
-    if (legacyParams.length > 0) {
-      const snapshot = await (this.page as PageEx)._snapshotForAI();
-      const legacyLocators = legacyParams.map((param) => {
-        // Check if this is a custom ref mapping first
-        if (this._customRefMappings.has(param.ref)) {
-          const selector = this._customRefMappings.get(param.ref);
-          if (selector) {
-            return this.page.locator(selector).describe(param.element);
-          }
-        }
-
-        // Otherwise, use the standard ref lookup
-        if (!snapshot.includes(`[ref=${param.ref}]`)) {
-          const availableRefs = this._getAvailableRefs(snapshot);
-          throw new Error(
-            `Ref ${param.ref} not found. Available refs: [${availableRefs.join(
-              ', '
-            )}]. Element: ${
-              param.element
-            }. Consider capturing a new snapshot if the page has changed.`
-          );
-        }
-        return this.page
-          .locator(`aria-ref=${param.ref}`)
-          .describe(param.element);
-      });
-      results.push(...legacyLocators);
-    }
-
-    // Handle new selector-based params
-    if (selectorParams.length > 0) {
-      const selectors = selectorParams.map((p) => {
-        if (!p.selector) {
-          throw new Error(`Missing selector for element: ${p.element}`);
-        }
-        return p.selector;
-      });
-      const resolutionResults =
-        await this._selectorResolver.resolveSelectors(selectors);
-
-      for (let i = 0; i < resolutionResults.length; i++) {
-        const result = resolutionResults[i];
-        const param = selectorParams[i];
-
-        if (result.error || !result.locator) {
-          throw new Error(
-            `Failed to resolve selector for element "${param.element}": ${
-              result.error || 'Unknown error'
-            }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
-          );
-        }
-
-        results.push(result.locator.describe(param.element));
+      if (result.error || !result.locator) {
+        throw new Error(
+          `Failed to resolve selector for element "${param.element}": ${
+            result.error || 'Unknown error'
+          }${result.alternatives ? `. Alternatives: ${JSON.stringify(result.alternatives)}` : ''}`
+        );
       }
+
+      results.push(result.locator.describe(param.element));
     }
 
     return results;
@@ -669,19 +611,6 @@ export class Tab extends EventEmitter<TabEventsInterface> {
         time
       );
     });
-  }
-
-  private _getAvailableRefs(snapshot: string): string[] {
-    const refMatches = snapshot.match(/\[ref=([^\]]+)\]/g);
-    if (!refMatches) {
-      return [];
-    }
-    return refMatches
-      .map((match) => {
-        const refValue = REF_VALUE_REGEX.exec(match);
-        return refValue ? refValue[1] : '';
-      })
-      .filter(Boolean);
   }
 }
 export type ConsoleMessage = {
