@@ -1,95 +1,101 @@
 import { expect, test } from './fixtures.js';
 
+interface InspectTestCase {
+  name: string;
+  html: string;
+  arguments: {
+    selectors: Array<{ css: string }>;
+    depth?: number;
+  };
+  expectations: Array<{
+    type: 'contains' | 'response';
+    value: string | object;
+  }>;
+}
+
 test.describe('browser_inspect_html', () => {
-  test('basic HTML inspection', async ({ client, server }) => {
-    server.setContent(
-      '/',
-      `
-      <title>Test Page</title>
-      <div id="main-container">
-        <h1>Main Heading</h1>
-        <p>Test paragraph</p>
-      </div>
+  const testCases: InspectTestCase[] = [
+    {
+      name: 'basic HTML inspection',
+      html: `
+        <title>Test Page</title>
+        <div id="main-container">
+          <h1>Main Heading</h1>
+          <p>Test paragraph</p>
+        </div>
       `,
-      'text/html'
-    );
-
-    await client.callTool({
-      name: 'browser_navigate',
-      arguments: { url: server.PREFIX },
-    });
-
-    const result = await client.callTool({
-      name: 'browser_inspect_html',
       arguments: {
         selectors: [{ css: '#main-container' }],
       },
-    });
-
-    expect(result).toHaveResponse({
-      code: expect.stringContaining('// HTML inspection completed'),
-    });
-
-    expect(result.content?.[0]?.text).toContain('main-container');
-    expect(result.content?.[0]?.text).toContain('elements found: 1');
-  });
-
-  test('multiple selectors', async ({ client, server }) => {
-    server.setContent(
-      '/',
-      `
-      <title>Test Page</title>
-      <h1 id="heading">Main Heading</h1>
-      <div id="content">Content div</div>
+      expectations: [
+        {
+          type: 'response',
+          value: {
+            code: expect.stringContaining('// HTML inspection completed'),
+          },
+        },
+        { type: 'contains', value: 'main-container' },
+        { type: 'contains', value: 'elements found: 1' },
+      ],
+    },
+    {
+      name: 'multiple selectors',
+      html: `
+        <title>Test Page</title>
+        <h1 id="heading">Main Heading</h1>
+        <div id="content">Content div</div>
       `,
-      'text/html'
-    );
-
-    await client.callTool({
-      name: 'browser_navigate',
-      arguments: { url: server.PREFIX },
-    });
-
-    const result = await client.callTool({
-      name: 'browser_inspect_html',
       arguments: {
         selectors: [{ css: '#heading' }, { css: '#content' }],
       },
-    });
-
-    expect(result.content?.[0]?.text).toContain('elements found: 2');
-    expect(result.content?.[0]?.text).toContain('Main Heading');
-    expect(result.content?.[0]?.text).toContain('Content div');
-  });
-
-  test('depth control', async ({ client, server }) => {
-    server.setContent(
-      '/',
-      `
-      <title>Test Page</title>
-      <div id="container">
-        <div class="nested">
-          <p>Nested content</p>
+      expectations: [
+        { type: 'contains', value: 'elements found: 2' },
+        { type: 'contains', value: 'Main Heading' },
+        { type: 'contains', value: 'Content div' },
+      ],
+    },
+    {
+      name: 'depth control',
+      html: `
+        <title>Test Page</title>
+        <div id="container">
+          <div class="nested">
+            <p>Nested content</p>
+          </div>
         </div>
-      </div>
       `,
-      'text/html'
-    );
-
-    await client.callTool({
-      name: 'browser_navigate',
-      arguments: { url: server.PREFIX },
-    });
-
-    const result = await client.callTool({
-      name: 'browser_inspect_html',
       arguments: {
         selectors: [{ css: '#container' }],
         depth: 3,
       },
-    });
+      expectations: [
+        { type: 'contains', value: 'depth: 3' },
+        { type: 'contains', value: 'Nested content' },
+      ],
+    },
+  ];
 
-    expect(result.content?.[0]?.text).toContain('depth: 3');
-    expect(result.content?.[0]?.text).toContain('Nested content');
-  });
+  for (const testCase of testCases) {
+    test(testCase.name, async ({ client, server }) => {
+      server.setContent('/', testCase.html, 'text/html');
+
+      await client.callTool({
+        name: 'browser_navigate',
+        arguments: { url: server.PREFIX },
+      });
+
+      const result = await client.callTool({
+        name: 'browser_inspect_html',
+        arguments: testCase.arguments,
+      });
+
+      for (const expectation of testCase.expectations) {
+        if (expectation.type === 'response') {
+          expect(result).toHaveResponse(expectation.value);
+        } else if (expectation.type === 'contains') {
+          expect(result.content?.[0]?.text).toContain(expectation.value);
+        }
+      }
+    });
+  }
 });

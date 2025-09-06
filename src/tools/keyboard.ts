@@ -3,6 +3,10 @@ import { expectationSchema } from '../schemas/expectation.js';
 import { elementSelectorSchema } from '../types/selectors.js';
 import { quote } from '../utils/codegen.js';
 import { generateKeyPressCode } from '../utils/common-formatters.js';
+import {
+  handleSnapshotExpectation,
+  resolveFirstElement,
+} from './shared-element-utils.js';
 import { defineTabTool } from './tool.js';
 import { generateLocator } from './utils.js';
 
@@ -27,10 +31,7 @@ const pressKey = defineTabTool({
       await tab.page.keyboard.press(params.key);
     });
     // If expectation includes snapshot, capture it now after navigation
-    if (params.expectation?.includeSnapshot) {
-      const newSnapshot = await tab.captureSnapshot();
-      response.setTabSnapshot(newSnapshot);
-    }
+    await handleSnapshotExpectation(tab, params.expectation, response);
   },
 });
 // Enhanced selector schema for browser tools
@@ -64,21 +65,7 @@ const type = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const resolutionResults = await tab.resolveElementLocators(
-      params.selectors
-    );
-    const successfulResults = resolutionResults.filter(
-      (r) => r.locator && !r.error
-    );
-
-    if (successfulResults.length === 0) {
-      const errors = resolutionResults
-        .map((r) => r.error || 'Unknown error')
-        .join(', ');
-      throw new Error(`Failed to resolve element selectors: ${errors}`);
-    }
-
-    const { locator } = successfulResults[0];
+    const { locator } = await resolveFirstElement(tab, params.selectors);
 
     await tab.waitForCompletion(async () => {
       if (params.slowly) {
@@ -101,10 +88,7 @@ const type = defineTabTool({
       }
     });
 
-    if (params.expectation?.includeSnapshot) {
-      const newSnapshot = await tab.captureSnapshot();
-      response.setTabSnapshot(newSnapshot);
-    }
+    await handleSnapshotExpectation(tab, params.expectation, response);
   },
 });
 export default [pressKey, type];

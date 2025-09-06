@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { expectationSchema } from '../schemas/expectation.js';
 import { elementSelectorSchema } from '../types/selectors.js';
 import { formatObject } from '../utils/codegen.js';
+import {
+  handleSnapshotExpectation,
+  resolveDragElements,
+  resolveFirstElement,
+} from './shared-element-utils.js';
 import { defineTabTool, defineTool } from './tool.js';
 import { generateLocator } from './utils.js';
 
@@ -69,22 +74,11 @@ const click = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const resolutionResults = await tab.resolveElementLocators(
-      params.selectors
+    const { locator } = await resolveFirstElement(
+      tab,
+      params.selectors,
+      'Failed to resolve any element selectors'
     );
-    const successfulResults = resolutionResults.filter(
-      (r) => r.locator && !r.error
-    );
-
-    if (successfulResults.length === 0) {
-      const errors = resolutionResults
-        .map((r) => r.error || 'Unknown error')
-        .join(', ');
-      throw new Error(`Failed to resolve any element selectors: ${errors}`);
-    }
-
-    // Use the first successfully resolved locator
-    const { locator } = successfulResults[0];
     const button = params.button;
     const buttonAttr = button ? `{ button: '${button}' }` : '';
 
@@ -107,10 +101,7 @@ const click = defineTabTool({
     });
 
     // If expectation includes snapshot, capture it now after potential navigation
-    if (params.expectation?.includeSnapshot) {
-      const newSnapshot = await tab.captureSnapshot();
-      response.setTabSnapshot(newSnapshot);
-    }
+    await handleSnapshotExpectation(tab, params.expectation, response);
   },
 });
 const drag = defineTabTool({
@@ -133,30 +124,11 @@ const drag = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const [startResults, endResults] = await Promise.all([
-      tab.resolveElementLocators(params.startSelectors),
-      tab.resolveElementLocators(params.endSelectors),
-    ]);
-
-    const startSuccessful = startResults.filter((r) => r.locator && !r.error);
-    const endSuccessful = endResults.filter((r) => r.locator && !r.error);
-
-    if (startSuccessful.length === 0) {
-      const errors = startResults
-        .map((r) => r.error || 'Unknown error')
-        .join(', ');
-      throw new Error(`Failed to resolve start element selectors: ${errors}`);
-    }
-
-    if (endSuccessful.length === 0) {
-      const errors = endResults
-        .map((r) => r.error || 'Unknown error')
-        .join(', ');
-      throw new Error(`Failed to resolve end element selectors: ${errors}`);
-    }
-
-    const startLocator = startSuccessful[0].locator;
-    const endLocator = endSuccessful[0].locator;
+    const { startLocator, endLocator } = await resolveDragElements(
+      tab,
+      params.startSelectors,
+      params.endSelectors
+    );
 
     await tab.waitForCompletion(async () => {
       await startLocator.dragTo(endLocator);
@@ -182,21 +154,7 @@ const hover = defineTabTool({
     type: 'readOnly',
   },
   handle: async (tab, params, response) => {
-    const resolutionResults = await tab.resolveElementLocators(
-      params.selectors
-    );
-    const successfulResults = resolutionResults.filter(
-      (r) => r.locator && !r.error
-    );
-
-    if (successfulResults.length === 0) {
-      const errors = resolutionResults
-        .map((r) => r.error || 'Unknown error')
-        .join(', ');
-      throw new Error(`Failed to resolve element selectors: ${errors}`);
-    }
-
-    const { locator } = successfulResults[0];
+    const { locator } = await resolveFirstElement(tab, params.selectors);
 
     response.addCode(`await page.${await generateLocator(locator)}.hover();`);
 
@@ -222,21 +180,7 @@ const selectOption = defineTabTool({
     type: 'destructive',
   },
   handle: async (tab, params, response) => {
-    const resolutionResults = await tab.resolveElementLocators(
-      params.selectors
-    );
-    const successfulResults = resolutionResults.filter(
-      (r) => r.locator && !r.error
-    );
-
-    if (successfulResults.length === 0) {
-      const errors = resolutionResults
-        .map((r) => r.error || 'Unknown error')
-        .join(', ');
-      throw new Error(`Failed to resolve element selectors: ${errors}`);
-    }
-
-    const { locator } = successfulResults[0];
+    const { locator } = await resolveFirstElement(tab, params.selectors);
 
     response.addCode(
       `await page.${await generateLocator(locator)}.selectOption(${formatObject(params.values)});`
