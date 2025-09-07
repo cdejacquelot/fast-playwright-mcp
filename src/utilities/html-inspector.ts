@@ -265,8 +265,8 @@ export class HTMLInspector {
     }
 
     // Sort by confidence and limit results
-    return suggestions
-      .toSorted((a, b) => b.confidence - a.confidence)
+    return [...suggestions]
+      .sort((a, b) => b.confidence - a.confidence)
       .slice(0, 20);
   }
 
