@@ -17,76 +17,76 @@
 import { expect, test } from './fixtures.js';
 import { HTML_TEMPLATES, setServerContent } from './test-helpers.js';
 
-test('browser_wait_for(text)', async ({ client, server }) => {
-  setServerContent(server, '/', HTML_TEMPLATES.WAIT_FOR_TEXT_UPDATE);
+const waitTestCases = [
+  {
+    name: 'browser_wait_for(text)',
+    template: HTML_TEMPLATES.WAIT_FOR_TEXT_UPDATE,
+    needsClick: true,
+    waitArgs: { text: 'Text to appear' },
+    expectedCode: `await page.getByText("Text to appear").first().waitFor({ state: 'visible' });`,
+    expectedState: '- generic [ref=e3]: Text to appear',
+  },
+  {
+    name: 'browser_wait_for(textGone)',
+    template: HTML_TEMPLATES.WAIT_FOR_TEXT_UPDATE,
+    needsClick: true,
+    waitArgs: { textGone: 'Text to disappear' },
+    expectedCode: `await page.getByText("Text to disappear").first().waitFor({ state: 'hidden' });`,
+    expectedState: '- generic [ref=e3]: Text to appear',
+  },
+  {
+    name: 'browser_wait_for(time)',
+    template: '<body><div>Hello World</div></body>',
+    needsClick: false,
+    waitArgs: { time: 1 },
+    expectedCode: 'await new Promise(f => setTimeout(f, 1 * 1000));',
+    expectedState: null,
+  },
+];
 
-  await client.callTool({
-    name: 'browser_navigate',
-    arguments: { url: server.PREFIX },
-  });
+for (const {
+  name,
+  template,
+  needsClick,
+  waitArgs,
+  expectedCode,
+  expectedState,
+} of waitTestCases) {
+  test(name, async ({ client, server, mcpBrowser }) => {
+    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+    if (template === '<body><div>Hello World</div></body>') {
+      server.setContent('/', template, 'text/html');
+    } else {
+      setServerContent(server, '/', template);
+    }
 
-  await client.callTool({
-    name: 'browser_click',
-    arguments: {
-      selectors: [{ ref: 'e2' }],
-    },
-  });
-
-  expect(
     await client.callTool({
+      name: 'browser_navigate',
+      arguments: { url: server.PREFIX },
+    });
+
+    if (needsClick) {
+      await client.callTool({
+        name: 'browser_click',
+        arguments: {
+          selectors: [{ ref: 'e2' }],
+        },
+      });
+    }
+
+    const result = await client.callTool({
       name: 'browser_wait_for',
-      arguments: { text: 'Text to appear' },
-    })
-  ).toHaveResponse({
-    code: expect.stringContaining(
-      `await page.getByText("Text to appear").first().waitFor({ state: 'visible' });`
-    ),
-    pageState: expect.stringContaining('- generic [ref=e3]: Text to appear'),
+      arguments: waitArgs,
+    });
+
+    const expectedResponse: Record<string, unknown> = {
+      code: expect.stringContaining(expectedCode),
+    };
+
+    if (expectedState) {
+      expectedResponse.pageState = expect.stringContaining(expectedState);
+    }
+
+    expect(result).toHaveResponse(expectedResponse);
   });
-});
-
-test('browser_wait_for(textGone)', async ({ client, server }) => {
-  setServerContent(server, '/', HTML_TEMPLATES.WAIT_FOR_TEXT_UPDATE);
-
-  await client.callTool({
-    name: 'browser_navigate',
-    arguments: { url: server.PREFIX },
-  });
-
-  await client.callTool({
-    name: 'browser_click',
-    arguments: {
-      selectors: [{ ref: 'e2' }],
-    },
-  });
-
-  expect(
-    await client.callTool({
-      name: 'browser_wait_for',
-      arguments: { textGone: 'Text to disappear' },
-    })
-  ).toHaveResponse({
-    code: expect.stringContaining(
-      `await page.getByText("Text to disappear").first().waitFor({ state: 'hidden' });`
-    ),
-    pageState: expect.stringContaining('- generic [ref=e3]: Text to appear'),
-  });
-});
-
-test('browser_wait_for(time)', async ({ client, server }) => {
-  server.setContent('/', '<body><div>Hello World</div></body>', 'text/html');
-
-  await client.callTool({
-    name: 'browser_navigate',
-    arguments: { url: server.PREFIX },
-  });
-
-  expect(
-    await client.callTool({
-      name: 'browser_wait_for',
-      arguments: { time: 1 },
-    })
-  ).toHaveResponse({
-    code: 'await new Promise(f => setTimeout(f, 1 * 1000));',
-  });
-});
+}

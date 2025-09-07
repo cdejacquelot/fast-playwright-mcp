@@ -17,46 +17,42 @@
 import { expect, test } from './fixtures.js';
 import { HTML_TEMPLATES, setServerContent } from './test-helpers.js';
 
-test('browser_hover', async ({ client, server, mcpBrowser }) => {
-  test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
-  setServerContent(server, '/', HTML_TEMPLATES.HOVER_BUTTON);
+const hoverTestCases = [
+  {
+    name: 'browser_hover',
+    template: HTML_TEMPLATES.HOVER_BUTTON,
+    expectedCode: `await page.getByRole('button', { name: 'Hover me' }).hover();`,
+    expectedState: '- button "Hovered!"',
+  },
+  {
+    name: 'browser_hover (tooltip)',
+    template: HTML_TEMPLATES.HOVER_TOOLTIP,
+    expectedCode: `await page.getByRole('button', { name: 'Hover for tooltip' }).hover();`,
+    expectedState: 'tooltip',
+  },
+];
 
-  await client.callTool({
-    name: 'browser_navigate',
-    arguments: { url: server.PREFIX },
-  });
+for (const { name, template, expectedCode, expectedState } of hoverTestCases) {
+  test(name, async ({ client, server, mcpBrowser }) => {
+    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
 
-  expect(
+    setServerContent(server, '/', template);
+
     await client.callTool({
+      name: 'browser_navigate',
+      arguments: { url: server.PREFIX },
+    });
+
+    const result = await client.callTool({
       name: 'browser_hover',
       arguments: {
         selectors: [{ ref: 'e2' }],
       },
-    })
-  ).toHaveResponse({
-    code: `await page.getByRole('button', { name: 'Hover me' }).hover();`,
-    pageState: expect.stringContaining('- button "Hovered!"'),
-  });
-});
+    });
 
-test('browser_hover (tooltip)', async ({ client, server, mcpBrowser }) => {
-  test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
-  setServerContent(server, '/', HTML_TEMPLATES.HOVER_TOOLTIP);
-
-  await client.callTool({
-    name: 'browser_navigate',
-    arguments: { url: server.PREFIX },
+    expect(result).toHaveResponse({
+      code: expectedCode,
+      pageState: expect.stringContaining(expectedState),
+    });
   });
-
-  const result = await client.callTool({
-    name: 'browser_hover',
-    arguments: {
-      selectors: [{ ref: 'e2' }],
-    },
-  });
-
-  expect(result).toHaveResponse({
-    code: `await page.getByRole('button', { name: 'Hover for tooltip' }).hover();`,
-    pageState: expect.stringContaining('tooltip'),
-  });
-});
+}
