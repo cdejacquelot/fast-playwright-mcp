@@ -48,7 +48,7 @@ test.describe('Batch Execution Schema Tests', () => {
   test('batchStepSchema should provide default values', () => {
     const minimalStep = {
       tool: 'browser_click',
-      arguments: { element: 'button' },
+      arguments: { selectors: [{ text: 'button' }] },
     };
 
     const result = batchStepSchema.safeParse(minimalStep);
@@ -69,7 +69,7 @@ test.describe('Batch Execution Schema Tests', () => {
         },
         {
           tool: 'browser_click',
-          arguments: { element: 'button', ref: '#submit' },
+          arguments: { selectors: [{ css: '#submit' }] },
           continueOnError: true,
           expectation: { includeSnapshot: true },
         },

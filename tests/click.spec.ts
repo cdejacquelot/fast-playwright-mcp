@@ -30,8 +30,7 @@ test('browser_click', async ({ client, server, mcpBrowser }) => {
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'Submit button',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
       },
     })
   ).toHaveResponse({
@@ -66,8 +65,7 @@ test('browser_click (double)', async ({ client, server, mcpBrowser }) => {
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'Click me',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
         doubleClick: true,
       },
     })
@@ -91,8 +89,7 @@ test('browser_click (right)', async ({ client, server, mcpBrowser }) => {
   const result = await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Menu',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
       button: 'right',
     },
   });

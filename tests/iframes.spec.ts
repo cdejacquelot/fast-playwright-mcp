@@ -40,8 +40,7 @@ test('stitched aria frames', async ({ client }) => {
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'World',
-        ref: 'f1e2',
+        selectors: [{ ref: 'f1e2' }],
       },
     })
   ).toHaveResponse({

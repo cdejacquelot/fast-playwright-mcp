@@ -57,8 +57,7 @@ test('cdp server reuse tab', async ({ cdpServer, startClient, server }) => {
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'Hello, world!',
-        ref: 'f0',
+        selectors: [{ ref: 'f0' }],
       },
     })
   ).toHaveResponse({

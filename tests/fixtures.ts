@@ -297,10 +297,12 @@ export const test = baseTest.extend<TestFixtures, WorkerFixtures>({
 
   _workerServers: [
     async ({}, use, workerInfo) => {
-      const port = 8907 + workerInfo.workerIndex * 4;
+      // Use larger port spacing (10 ports per worker) to avoid conflicts
+      // This gives us more room for multiple test servers and reduces collision risk
+      const port = 8907 + workerInfo.workerIndex * 10;
       const server = await TestServer.create(port);
 
-      const httpsPort = port + 1;
+      const httpsPort = port + 2; // Skip one port for extra safety
       const httpsServer = await TestServer.createHTTPS(httpsPort);
 
       await use({ server, httpsServer });

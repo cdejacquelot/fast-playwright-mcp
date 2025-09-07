@@ -53,8 +53,7 @@ test('browser_file_upload', async ({ client, server }, testInfo) => {
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'Textbox',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
       },
     })
   ).toHaveResponse({
@@ -81,8 +80,7 @@ test('browser_file_upload', async ({ client, server }, testInfo) => {
   const response2 = await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Textbox',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
     },
   });
 
@@ -93,8 +91,7 @@ test('browser_file_upload', async ({ client, server }, testInfo) => {
   const response3 = await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Button',
-      ref: 'e3',
+      selectors: [{ ref: 'e3' }],
     },
   });
 
@@ -132,8 +129,7 @@ test('clicking on download link emits download', async ({
   await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Download link',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
     },
   });
   await expect

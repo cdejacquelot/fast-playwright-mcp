@@ -41,8 +41,7 @@ test('browser_network_requests', async ({ client, server }) => {
   await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Click me button',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
     },
   });
 

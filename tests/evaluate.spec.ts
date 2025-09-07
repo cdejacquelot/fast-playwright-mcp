@@ -78,8 +78,7 @@ test('browser_evaluate (element)', async ({ client, server }) => {
       name: 'browser_evaluate',
       arguments: {
         function: 'element => element.textContent',
-        element: 'text content',
-        ref: actualRef,
+        selectors: [{ ref: actualRef }],
       },
     })
   ).toHaveResponse(

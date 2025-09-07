@@ -1052,13 +1052,11 @@ export async function setupDialogTest(
  */
 export async function clickButtonAndExpectModal(
   client: Client,
-  buttonText: string,
   expectedModalState: Record<string, unknown>,
   expectedCode?: string
 ): Promise<CallToolResponse> {
   const result = await callTool(client, 'browser_click', {
-    element: buttonText,
-    ref: 'e2',
+    selectors: [{ ref: 'e2' }],
   });
 
   const expectedResponse: Record<string, unknown> = {
@@ -1143,7 +1141,6 @@ export async function executeDialogTest(
 
   await clickButtonAndExpectModal(
     client,
-    buttonText,
     modalExpectation,
     DIALOG_EXPECTATIONS.BUTTON_CLICKED(buttonText).code
   );

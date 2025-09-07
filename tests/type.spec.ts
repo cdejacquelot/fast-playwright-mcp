@@ -32,8 +32,7 @@ test('browser_type', async ({ client, server, mcpBrowser }) => {
     const response = await client.callTool({
       name: 'browser_type',
       arguments: {
-        element: 'textbox',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
         text: 'Hi!',
         submit: true,
       },
@@ -68,8 +67,7 @@ test('browser_type (slowly)', async ({ client, server, mcpBrowser }) => {
     const response = await client.callTool({
       name: 'browser_type',
       arguments: {
-        element: 'textbox',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
         text: 'Hi!',
         slowly: true,
       },
@@ -113,8 +111,7 @@ test('browser_type (no submit)', async ({ client, server, mcpBrowser }) => {
     const response = await client.callTool({
       name: 'browser_type',
       arguments: {
-        element: 'textbox',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
         text: 'Hi!',
       },
     });
@@ -170,8 +167,7 @@ async function setupAndTestBrowserTypeSubmit(
   const response = await client.callTool({
     name: 'browser_type',
     arguments: {
-      element: 'textbox',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
       text: inputText,
       submit: true,
       expectation: {

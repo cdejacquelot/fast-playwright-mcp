@@ -30,8 +30,7 @@ test('browser_hover', async ({ client, server, mcpBrowser }) => {
     await client.callTool({
       name: 'browser_hover',
       arguments: {
-        element: 'Hover button',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
       },
     })
   ).toHaveResponse({
@@ -52,8 +51,7 @@ test('browser_hover (tooltip)', async ({ client, server, mcpBrowser }) => {
   const result = await client.callTool({
     name: 'browser_hover',
     arguments: {
-      element: 'Hover for tooltip',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
     },
   });
 

@@ -311,7 +311,6 @@ export async function executeBatchWithErrorHandling(
  */
 export function createNavigationAndClickSteps(
   serverPrefix: string,
-  clickElement = 'Click Me button',
   clickRef = 'e2',
   includeSnapshot = false
 ) {
@@ -323,7 +322,12 @@ export function createNavigationAndClickSteps(
     },
     {
       tool: 'browser_click',
-      arguments: { element: clickElement, ref: clickRef },
+      // If includeSnapshot is true, use ref; otherwise use text selector
+      arguments: {
+        selectors: includeSnapshot
+          ? [{ ref: clickRef }]
+          : [{ text: 'Click Me' }],
+      },
       expectation: { includeSnapshot },
     },
   ];
@@ -345,13 +349,16 @@ export function createStepsWithError(
     },
     {
       tool: 'browser_click',
-      arguments: { element: 'nonexistent button', ref: 'nonexistent' },
+      arguments: { selectors: [{ text: 'nonexistent button' }] },
       continueOnError,
       expectation: { includeSnapshot },
     },
     {
       tool: 'browser_click',
-      arguments: { element: 'Click Me button', ref: 'e2' },
+      // If includeSnapshot is true from navigation, use ref; otherwise use text selector
+      arguments: {
+        selectors: includeSnapshot ? [{ ref: 'e2' }] : [{ text: 'Click Me' }],
+      },
       expectation: { includeSnapshot },
     },
   ];

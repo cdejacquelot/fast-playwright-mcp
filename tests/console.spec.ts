@@ -105,8 +105,7 @@ test('recent console messages', async ({ client, server }) => {
   const response = await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Click me',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
       expectation: {
         includeConsole: true,
       },

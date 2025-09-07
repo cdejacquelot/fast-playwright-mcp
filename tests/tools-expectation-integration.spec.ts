@@ -113,8 +113,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const result = await client.callTool({
         name: 'browser_click',
         arguments: {
-          element: 'Test button',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
           expectation: {
             includeSnapshot: false,
             includeConsole: false,
@@ -148,8 +147,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const result = await client.callTool({
         name: 'browser_click',
         arguments: {
-          element: 'Test button',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
           expectation: {
             includeSnapshot: true,
             includeConsole: false,
@@ -182,8 +180,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const result = await client.callTool({
         name: 'browser_click',
         arguments: {
-          element: 'Test button',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
         },
       });
 
@@ -212,8 +209,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const result = await client.callTool({
         name: 'browser_type',
         arguments: {
-          element: 'Test input',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
           text: 'test text',
           expectation: {
             includeSnapshot: false,
@@ -248,8 +244,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const result = await client.callTool({
         name: 'browser_type',
         arguments: {
-          element: 'Test input',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
           text: 'test text',
           expectation: {
             includeSnapshot: true,
@@ -283,8 +278,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const result = await client.callTool({
         name: 'browser_type',
         arguments: {
-          element: 'Test input',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
           text: 'test text',
         },
       });
@@ -367,8 +361,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const clickResult = await client.callTool({
         name: 'browser_click',
         arguments: {
-          element: 'Test button',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
         },
       });
       expect(clickResult.isError).toBeFalsy();
@@ -377,8 +370,7 @@ test.describe('Main Tools Expectation Integration', () => {
       const typeResult = await client.callTool({
         name: 'browser_type',
         arguments: {
-          element: 'Test input',
-          ref: 'e3',
+          selectors: [{ ref: 'e3' }],
           text: 'test',
         },
       });
