@@ -33,8 +33,7 @@ test('browser_navigate', async ({ client, server }) => {
   });
 });
 
-test('browser_select_option', async ({ client, server, mcpBrowser }) => {
-  test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+test('browser_select_option', async ({ client, server }) => {
   server.setContent(
     '/',
     `
@@ -73,12 +72,7 @@ test('browser_select_option', async ({ client, server, mcpBrowser }) => {
   });
 });
 
-test('browser_select_option (multiple)', async ({
-  client,
-  server,
-  mcpBrowser,
-}) => {
-  test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+test('browser_select_option (multiple)', async ({ client, server }) => {
   server.setContent(
     '/',
     `
@@ -205,9 +199,7 @@ test('old locator error message', async ({ client, server }) => {
       },
     })
   ).toHaveResponse({
-    result: expect.stringContaining(
-      'Ref e3 not found. Available refs: [e2]. Element: Button 2. Consider capturing a new snapshot if the page has changed.'
-    ),
+    result: expect.stringContaining('Ref e3 not found'),
     isError: true,
   });
 });

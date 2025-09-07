@@ -27,6 +27,7 @@ const BASE_BROWSER_TOOLS = [
   'browser_find_elements',
   'browser_handle_dialog',
   'browser_hover',
+  'browser_inspect_html',
   'browser_install',
   'browser_navigate_back',
   'browser_navigate_forward',

@@ -148,9 +148,7 @@ for (const {
   expectError,
   errorCheck,
 } of evaluateTestCases) {
-  test(name, async ({ client, server, mcpBrowser }) => {
-    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
-
+  test(name, async ({ client, server }) => {
     if (setup && evaluateArgs.needsRef) {
       await testEvaluateWithElement(
         client,

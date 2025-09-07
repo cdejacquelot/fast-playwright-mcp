@@ -64,9 +64,7 @@ for (const {
   expectedCode,
   verifyConsole,
 } of typeTestCases) {
-  test(name, async ({ client, server, mcpBrowser }) => {
-    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
-
+  test(name, async ({ client, server }) => {
     setServerContent(server, '/', template);
 
     await client.callTool({

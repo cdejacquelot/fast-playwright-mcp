@@ -26,6 +26,25 @@ jobs:
     - name: Ensure no changes
       run: git diff --exit-code
 
+  ctest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    - name: Use Node.js 18
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    - name: Install dependencies
+      run: bun install
+    - name: Install Playwright browsers
+      run: bunx playwright install --with-deps
+    - name: Run ctest
+      run: bun run ctest
+
   # test:
   #   strategy:
   #     fail-fast: false

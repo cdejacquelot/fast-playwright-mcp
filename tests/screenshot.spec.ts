@@ -126,8 +126,7 @@ test('browser_take_screenshot (element)', async ({
 
   expect(
     await callTool(client, 'browser_take_screenshot', {
-      element: 'hello button',
-      ref: 'e1',
+      selectors: [{ ref: 'e1' }],
       expectation: COMMON_EXPECTATIONS.WITH_CODE,
     })
   ).toHaveResponse({
@@ -289,8 +288,7 @@ test('browser_take_screenshot (fullPage: true with element should fail)', async 
 
   const result = await callTool(client, 'browser_take_screenshot', {
     fullPage: true,
-    element: 'hello button',
-    ref: 'e1',
+    selectors: [{ ref: 'e1' }],
   });
 
   expect(result.isError).toBe(true);

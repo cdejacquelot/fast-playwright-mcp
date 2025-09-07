@@ -33,9 +33,7 @@ const hoverTestCases = [
 ];
 
 for (const { name, template, expectedCode, expectedState } of hoverTestCases) {
-  test(name, async ({ client, server, mcpBrowser }) => {
-    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
-
+  test(name, async ({ client, server }) => {
     setServerContent(server, '/', template);
 
     await client.callTool({
