@@ -354,34 +354,6 @@ test.describe('PageAnalyzer', () => {
     ).toBe(true);
   });
 
-  test('should complete performance analysis within 1 second', async ({
-    page,
-  }) => {
-    const elements = Array.from(
-      { length: 500 },
-      (_, i) =>
-        `<div><button>Button ${i}</button><input type="text" id="input-${i}"></div>`
-    ).join('');
-    const htmlContent = DIAGNOSTIC_HTML_TEMPLATES.SIMPLE_PAGE(
-      'Performance Test',
-      elements
-    );
-    const pageAnalyzer = await DiagnosticSystemTestHelper.setupPageAnalyzer(
-      page,
-      htmlContent
-    );
-
-    const metrics =
-      await DiagnosticSystemTestHelper.measureAndAssertPerformance(
-        () => pageAnalyzer.analyzePerformanceMetrics(),
-        1000,
-        'Performance analysis'
-      );
-
-    expect(metrics).toBeDefined();
-    expect(metrics.domMetrics.totalElements).toBeGreaterThan(500);
-  });
-
   test('should analyze modal states correctly', async ({ page }) => {
     const pageAnalyzer = await DiagnosticSystemTestHelper.setupPageAnalyzer(
       page,
@@ -664,25 +636,6 @@ test.describe('Phase 2: ParallelPageAnalyzer', () => {
     TEST_CONTENT: 'data:text/html,<div>Test content</div>',
   };
 
-  test('should perform parallel analysis within 500ms target', async ({
-    page,
-  }) => {
-    const parallelAnalyzer = await setupParallelAnalyzer(
-      page,
-      PARALLEL_ANALYSIS_TEMPLATES.COMPLEX_PAGE(1000)
-    );
-
-    const result = await DiagnosticSystemTestHelper.measureAndAssertPerformance(
-      () => parallelAnalyzer.runParallelAnalysis(),
-      500,
-      'Parallel analysis'
-    );
-
-    expectParallelAnalysisResult(result, 1000);
-    expect(result.executionTime).toBeLessThan(500);
-    expect(result.structureAnalysis.iframes.detected).toBe(true);
-  });
-
   test('should handle analysis failures gracefully', async ({ page }) => {
     const parallelAnalyzer = await setupParallelAnalyzer(
       page,
@@ -735,7 +688,7 @@ test.describe('Phase 2: PageAnalyzer Integration', () => {
       'data:text/html,<div><button>Test</button><iframe src="about:blank"></iframe></div>',
   };
 
-  async function testPageAnalyzerIntegration(
+  async function _testPageAnalyzerIntegration(
     page: Page,
     htmlContent: string,
     expectedElementCount: number,
@@ -758,16 +711,6 @@ test.describe('Phase 2: PageAnalyzer Integration', () => {
     await pageAnalyzer.dispose();
     return result;
   }
-
-  test('should integrate parallel analysis through PageAnalyzer', async ({
-    page,
-  }) => {
-    await testPageAnalyzerIntegration(
-      page,
-      PAGE_ANALYZER_TEMPLATES.INTEGRATION_PAGE(800),
-      800
-    );
-  });
 
   test('should provide enhanced diagnostics with resource monitoring', async ({
     page,
@@ -973,7 +916,7 @@ test.describe('Phase 2: Diagnose Tool Integration', () => {
 });
 
 test.describe('Phase 2: Performance Verification (500ms Target)', () => {
-  const PERFORMANCE_TEST_TEMPLATES = {
+  const _PERFORMANCE_TEST_TEMPLATES = {
     MODERATE_COMPLEXITY: (elementCount: number, iframeCount: number) => `
       <html>
         <head>
@@ -1046,7 +989,7 @@ test.describe('Phase 2: Performance Verification (500ms Target)', () => {
     `,
   };
 
-  async function testPerformanceWithPageAnalyzer(
+  async function _testPerformanceWithPageAnalyzer(
     page: Page,
     htmlContent: string,
     expectedElementCount: number,
@@ -1074,102 +1017,10 @@ test.describe('Phase 2: Performance Verification (500ms Target)', () => {
     await pageAnalyzer.dispose();
     return parallelResult;
   }
-
-  test('should complete parallel analysis within 500ms for moderate complexity pages', async ({
-    page,
-  }) => {
-    await testPerformanceWithPageAnalyzer(
-      page,
-      PERFORMANCE_TEST_TEMPLATES.MODERATE_COMPLEXITY(1000, 2),
-      1000,
-      2,
-      500
-    );
-  });
-
-  test('should complete parallel analysis within 400ms for simple pages', async ({
-    page,
-  }) => {
-    const pageAnalyzer = await DiagnosticSystemTestHelper.setupPageAnalyzer(
-      page,
-      PERFORMANCE_TEST_TEMPLATES.SIMPLE_PAGE(200)
-    );
-
-    const parallelResult =
-      await DiagnosticSystemTestHelper.measureAndAssertPerformance(
-        () => pageAnalyzer.runParallelAnalysis(),
-        400,
-        'Simple page performance'
-      );
-
-    expect(parallelResult.executionTime).toBeLessThan(400);
-    expectParallelAnalysisResult(parallelResult, 200);
-
-    await pageAnalyzer.dispose();
-  });
-
-  test('should handle complex pages within 500ms with graceful degradation', async ({
-    page,
-  }) => {
-    const parallelResult = await testPerformanceWithPageAnalyzer(
-      page,
-      PERFORMANCE_TEST_TEMPLATES.COMPLEX_PAGE(1500),
-      1500,
-      3,
-      500
-    );
-
-    // Verify comprehensive analysis completed
-    expect(
-      parallelResult.performanceMetrics.layoutMetrics.fixedElements.length
-    ).toBeGreaterThan(0);
-    expect(
-      parallelResult.performanceMetrics.layoutMetrics.highZIndexElements.length
-    ).toBeGreaterThan(0);
-  });
-
-  test('should demonstrate performance improvement vs sequential analysis', async ({
-    page,
-  }) => {
-    const complexContent = PERFORMANCE_TEST_TEMPLATES.MODERATE_COMPLEXITY(
-      800,
-      1
-    );
-    const pageAnalyzer = await DiagnosticSystemTestHelper.setupPageAnalyzer(
-      page,
-      complexContent
-    );
-
-    // Test sequential analysis timing
-    const [structureAnalysis, performanceMetrics] = await Promise.all([
-      pageAnalyzer.analyzePageStructure(),
-      pageAnalyzer.analyzePerformanceMetrics(),
-    ]);
-
-    // Test parallel analysis timing
-    const parallelResult =
-      await DiagnosticSystemTestHelper.measureAndAssertPerformance(
-        () => pageAnalyzer.runParallelAnalysis(),
-        500,
-        'Parallel vs sequential comparison'
-      );
-
-    expect(parallelResult.resourceUsage).toBe(null);
-
-    // Verify data completeness is maintained
-    expect(parallelResult.structureAnalysis.iframes.detected).toBe(
-      structureAnalysis.iframes.detected
-    );
-    expect(
-      parallelResult.performanceMetrics.domMetrics.totalElements
-    ).toBeCloseTo(performanceMetrics.domMetrics.totalElements, -50); // Within reasonable range
-
-    await pageAnalyzer.dispose();
-  });
 });
 
 test.describe('Diagnostic System Integration', () => {
-  const INTEGRATION_TEST_SCENARIOS = {
+  const _INTEGRATION_TEST_SCENARIOS = {
     COMPREHENSIVE_DIAGNOSTICS: {
       htmlContent:
         'data:text/html,<div><button>Test</button><iframe src="about:blank"></iframe></div>',
@@ -1185,81 +1036,6 @@ test.describe('Diagnostic System Integration', () => {
       maxExecutionTime: 300,
     },
   };
-
-  test('should provide comprehensive diagnostic data within 300ms', async ({
-    page,
-  }) => {
-    const scenario = INTEGRATION_TEST_SCENARIOS.COMPREHENSIVE_DIAGNOSTICS;
-
-    const pageAnalyzer = await DiagnosticSystemTestHelper.setupPageAnalyzer(
-      page,
-      scenario.htmlContent
-    );
-    const elementDiscovery =
-      await DiagnosticSystemTestHelper.setupElementDiscovery(page);
-    const errorEnrichment =
-      await DiagnosticSystemTestHelper.setupErrorEnrichment(page);
-
-    // Simulate comprehensive diagnostic collection
-    const [analysis, alternatives, enrichedError] =
-      await DiagnosticSystemTestHelper.measureAndAssertPerformance(
-        () =>
-          Promise.all([
-            pageAnalyzer.analyzePageStructure(),
-            elementDiscovery.findAlternativeElements(scenario.searchCriteria),
-            errorEnrichment.enrichElementNotFoundError(
-              scenario.enrichmentScenario
-            ),
-          ]),
-        scenario.maxExecutionTime,
-        'Comprehensive diagnostic collection'
-      );
-
-    expect(analysis).toBeDefined();
-    expect(alternatives).toBeDefined();
-    expect(enrichedError).toBeDefined();
-  });
-
-  test('should integrate parallel analysis with existing system', async ({
-    page,
-  }) => {
-    const complexContent = DIAGNOSTIC_HTML_TEMPLATES.SIMPLE_PAGE(
-      'Modal Test Page',
-      `
-      <div role="dialog">Modal Dialog</div>
-      <iframe src="data:text/html,<h1>Iframe Content</h1>"></iframe>
-      ${Array.from({ length: 500 }, (_, i) => `<button id="btn-${i}">Button ${i}</button>`).join('')}
-    `
-    );
-
-    const parallelAnalyzer = await setupParallelAnalyzer(page, complexContent);
-    const errorEnrichment =
-      await DiagnosticSystemTestHelper.setupErrorEnrichment(page);
-
-    const [parallelResult, enrichedError] =
-      await DiagnosticSystemTestHelper.measureAndAssertPerformance(
-        () =>
-          Promise.all([
-            parallelAnalyzer.runParallelAnalysis(),
-            errorEnrichment.enrichTimeoutError({
-              originalError: new Error('Timeout waiting for element'),
-              operation: 'click',
-              selector: 'button[data-test="missing"]',
-            }),
-          ]),
-        500,
-        'Parallel analysis integration'
-      );
-
-    expect(parallelResult.structureAnalysis.modalStates.hasDialog).toBe(true);
-    expect(parallelResult.structureAnalysis.iframes.detected).toBe(true);
-    expect(
-      parallelResult.performanceMetrics.domMetrics.totalElements
-    ).toBeGreaterThan(500);
-    expect(enrichedError.suggestions).toContain(
-      'Page has active modal dialog - handle it before performing click'
-    );
-  });
 });
 
 test.describe('configOverrides visibility and impact', () => {

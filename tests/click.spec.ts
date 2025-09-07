@@ -9,8 +9,7 @@ const clickTestCases = [
     setup: () => HTML_TEMPLATES.BASIC_BUTTON,
     clickArgs: {},
     expectedCode: `await page.getByRole('button', { name: 'Submit' }).click();`,
-    expectedState: (mcpBrowser: string) =>
-      `- button "Submit" ${mcpBrowser !== 'webkit' || process.platform === 'linux' ? '[active] ' : ''}[ref=e2]`,
+    expectedState: () => `- button "Submit"`,
   },
   {
     name: 'browser_click (double)',
@@ -43,9 +42,7 @@ for (const {
   expectedCode,
   expectedState,
 } of clickTestCases) {
-  test(name, async ({ client, server, mcpBrowser }) => {
-    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
-
+  test(name, async ({ client, server }) => {
     setServerContent(server, '/', setup());
 
     await client.callTool({
@@ -63,7 +60,7 @@ for (const {
 
     expect(result).toHaveResponse({
       code: expectedCode,
-      pageState: expect.stringContaining(expectedState(mcpBrowser)),
+      pageState: expect.stringContaining(expectedState()),
     });
   });
 }

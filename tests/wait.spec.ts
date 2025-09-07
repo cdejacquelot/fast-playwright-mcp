@@ -52,8 +52,7 @@ for (const {
   expectedCode,
   expectedState,
 } of waitTestCases) {
-  test(name, async ({ client, server, mcpBrowser }) => {
-    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+  test(name, async ({ client, server }) => {
     if (template === '<body><div>Hello World</div></body>') {
       server.setContent('/', template, 'text/html');
     } else {

@@ -17,8 +17,7 @@
 import { expect, test } from './fixtures.js';
 import { HTML_TEMPLATES, setServerContent } from './test-helpers.js';
 
-test('browser_drag', async ({ client, server, mcpBrowser }) => {
-  test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+test('browser_drag', async ({ client, server }) => {
   setServerContent(server, '/', HTML_TEMPLATES.DRAG_DROP);
 
   await client.callTool({
@@ -30,10 +29,8 @@ test('browser_drag', async ({ client, server, mcpBrowser }) => {
     await client.callTool({
       name: 'browser_drag',
       arguments: {
-        startElement: 'Draggable item',
-        startRef: 'e2',
-        endElement: 'Drop zone',
-        endRef: 'e3',
+        startSelectors: [{ ref: 'e2' }],
+        endSelectors: [{ ref: 'e3' }],
       },
     })
   ).toHaveResponse({
@@ -42,12 +39,7 @@ test('browser_drag', async ({ client, server, mcpBrowser }) => {
   });
 });
 
-test('browser_drag (multiple items)', async ({
-  client,
-  server,
-  mcpBrowser,
-}) => {
-  test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+test('browser_drag (multiple items)', async ({ client, server }) => {
   setServerContent(server, '/', HTML_TEMPLATES.MULTI_DRAG_DROP);
 
   await client.callTool({
@@ -58,10 +50,8 @@ test('browser_drag (multiple items)', async ({
   const result = await client.callTool({
     name: 'browser_drag',
     arguments: {
-      startElement: 'Item 1',
-      startRef: 'e2',
-      endElement: 'Drop area',
-      endRef: 'e4',
+      startSelectors: [{ ref: 'e2' }],
+      endSelectors: [{ ref: 'e4' }],
     },
   });
 
