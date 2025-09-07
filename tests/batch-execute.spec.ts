@@ -38,12 +38,7 @@ test.describe('Browser Batch Execute', () => {
     const page = createButtonPage('Click Me');
     server.setContent(page.path, page.content, page.contentType);
 
-    const steps = createNavigationAndClickSteps(
-      server.PREFIX,
-      'Click Me button',
-      'e2',
-      true
-    );
+    const steps = createNavigationAndClickSteps(server.PREFIX, 'e2', true);
     steps[0].expectation.includeConsole = false;
     steps[1].expectation.includeConsole = false;
 
@@ -134,7 +129,7 @@ test.describe('Browser Batch Execute', () => {
           },
           {
             tool: 'browser_click',
-            arguments: { element: 'Click Me button', ref: 'e2' },
+            arguments: { selectors: [{ ref: 'e2' }] },
             // No step-level expectation, should use global
           },
         ],
@@ -165,12 +160,12 @@ test.describe('Browser Batch Execute', () => {
           },
           {
             tool: 'browser_type',
-            arguments: { text: 'Hello World', element: 'textbox', ref: 'e2' },
+            arguments: { text: 'Hello World', selectors: [{ ref: 'e2' }] },
             expectation: { includeSnapshot: true },
           },
           {
             tool: 'browser_click',
-            arguments: { element: 'Submit button', ref: 'e3' },
+            arguments: { selectors: [{ ref: 'e3' }] },
             expectation: { includeSnapshot: true },
           },
         ],
@@ -203,7 +198,7 @@ test.describe('Browser Batch Execute', () => {
           },
           {
             tool: 'browser_click',
-            arguments: { element: 'Click Me button', ref: 'e2' },
+            arguments: { selectors: [{ ref: 'e2' }] },
             expectation: { includeSnapshot: false },
           },
         ],

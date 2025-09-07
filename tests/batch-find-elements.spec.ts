@@ -917,7 +917,7 @@ test.describe('Batch Find Elements Tests', () => {
           // Invalid operation (will fail)
           {
             tool: 'browser_click',
-            arguments: { element: 'nonexistent', ref: 'invalid_ref' },
+            arguments: { selectors: [{ ref: 'invalid_ref' }] },
             expectation: { includeSnapshot: false },
             continueOnError: true,
           },

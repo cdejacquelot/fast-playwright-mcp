@@ -44,7 +44,6 @@ test('two alert dialogs', async ({ client, server }) => {
 
   await clickButtonAndExpectModal(
     client,
-    'Button',
     DIALOG_EXPECTATIONS.ALERT_MODAL('Alert 1'),
     DIALOG_EXPECTATIONS.BUTTON_CLICKED('Button').code
   );
@@ -105,7 +104,6 @@ test('prompt dialog', async ({ client, server }) => {
 
   await clickButtonAndExpectModal(
     client,
-    'Button',
     DIALOG_EXPECTATIONS.PROMPT_MODAL('Prompt')
   );
 
@@ -123,7 +121,6 @@ test('alert dialog w/ race', async ({ client, server }) => {
 
   await clickButtonAndExpectModal(
     client,
-    'Button',
     DIALOG_EXPECTATIONS.ALERT_MODAL('Alert'),
     DIALOG_EXPECTATIONS.BUTTON_CLICKED('Button').code
   );

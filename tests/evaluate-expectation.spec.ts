@@ -92,8 +92,7 @@ test.describe('Evaluate Tool Expectation Parameter', () => {
         name: 'browser_evaluate',
         arguments: {
           function: '(element) => element.textContent',
-          element: 'button with text Click me',
-          ref: 'e2',
+          selectors: [{ ref: 'e2' }],
           expectation: COMMON_EXPECTATIONS.EVALUATE_WITH_CODE,
         },
       });

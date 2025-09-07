@@ -15,56 +15,71 @@
  */
 
 import { expect, test } from './fixtures.js';
-
-// Regular expression for extracting ref from page state
-const REF_PATTERN = /\[ref=([^\]]+)\]/;
-
 import {
   expectCodeAndResult,
   expectPageTitle,
   setServerContent,
 } from './test-helpers.js';
 
+// Regular expression for extracting ref from page state
+const REF_PATTERN = /\[ref=([^\]]+)\]/;
+
 // Top-level regex patterns for performance optimization
 const ERROR_PATTERNS_REGEX = /not defined|Can't find variable/;
 
-test('browser_evaluate', async ({ client, server }) => {
-  expect(
-    await client.callTool({
-      name: 'browser_navigate',
-      arguments: { url: server.HELLO_WORLD },
-    })
-  ).toHaveResponse(expectPageTitle());
+const evaluateTestCases = [
+  {
+    name: 'browser_evaluate',
+    setup: null,
+    evaluateArgs: {
+      function: '() => document.title',
+    },
+    expectedCode: `await page.evaluate('() => document.title');`,
+    expectedResult: `"Title"`,
+    expectError: false,
+  },
+  {
+    name: 'browser_evaluate (element)',
+    setup: `<div style="background-color: red">Hello, world!</div>`,
+    evaluateArgs: {
+      function: 'element => element.textContent',
+      needsRef: true,
+    },
+    expectedCode: `await page.getByText('Hello, world!').evaluate('element => element.textContent');`,
+    expectedResult: `"Hello, world!"`,
+    expectError: false,
+  },
+  {
+    name: 'browser_evaluate (error)',
+    setup: null,
+    evaluateArgs: {
+      function: '() => nonExistentVariable',
+    },
+    expectedCode: null,
+    expectedResult: null,
+    expectError: true,
+    errorCheck: (errorText: string) => {
+      expect(errorText).toContain('nonExistentVariable');
+      expect(errorText).toMatch(ERROR_PATTERNS_REGEX);
+    },
+  },
+];
 
-  expect(
-    await client.callTool({
-      name: 'browser_evaluate',
-      arguments: {
-        function: '() => document.title',
-      },
-    })
-  ).toHaveResponse(
-    expectCodeAndResult(
-      `await page.evaluate('() => document.title');`,
-      `"Title"`
-    )
-  );
-});
-
-test('browser_evaluate (element)', async ({ client, server }) => {
-  setServerContent(
-    server,
-    '/',
-    `
-    <div style="background-color: red">Hello, world!</div>
-  `
-  );
+// Helper function to test with element
+async function testEvaluateWithElement(
+  client: Awaited<ReturnType<typeof import('./fixtures.js').getClient>>,
+  server: import('./testserver/index.js').TestServer,
+  setup: string,
+  evaluateArgs: { function: string; needsRef?: boolean },
+  expectedCode: string | null,
+  expectedResult: string | null
+) {
+  setServerContent(server, '/', setup);
   const navResponse = await client.callTool({
     name: 'browser_navigate',
     arguments: { url: server.PREFIX },
   });
 
-  // Get the actual reference from the navigation response
   interface ResponseContent {
     text?: string;
   }
@@ -73,24 +88,31 @@ test('browser_evaluate (element)', async ({ client, server }) => {
   const refMatch = pageState?.match(REF_PATTERN);
   const actualRef = refMatch ? refMatch[1] : 'e1';
 
-  expect(
-    await client.callTool({
-      name: 'browser_evaluate',
-      arguments: {
-        function: 'element => element.textContent',
-        element: 'text content',
-        ref: actualRef,
-      },
-    })
-  ).toHaveResponse(
-    expectCodeAndResult(
-      `await page.getByText('Hello, world!').evaluate('element => element.textContent');`,
-      `"Hello, world!"`
-    )
-  );
-});
+  const result = await client.callTool({
+    name: 'browser_evaluate',
+    arguments: {
+      function: evaluateArgs.function,
+      selectors: [{ ref: actualRef }],
+    },
+  });
 
-test('browser_evaluate (error)', async ({ client, server }) => {
+  if (expectedCode && expectedResult) {
+    expect(result).toHaveResponse(
+      expectCodeAndResult(expectedCode, expectedResult)
+    );
+  }
+}
+
+// Helper function to test without element
+async function testEvaluateWithoutElement(
+  client: Awaited<ReturnType<typeof import('./fixtures.js').getClient>>,
+  server: import('./testserver/index.js').TestServer,
+  evaluateArgs: { function: string; needsRef?: boolean },
+  expectedCode: string | null,
+  expectedResult: string | null,
+  expectError: boolean,
+  errorCheck?: (text: string) => void
+) {
   expect(
     await client.callTool({
       name: 'browser_navigate',
@@ -101,13 +123,53 @@ test('browser_evaluate (error)', async ({ client, server }) => {
   const result = await client.callTool({
     name: 'browser_evaluate',
     arguments: {
-      function: '() => nonExistentVariable',
+      function: evaluateArgs.function,
     },
   });
 
-  expect(result.isError).toBe(true);
-  expect(result.content?.[0]?.text).toContain('nonExistentVariable');
-  // Check for common error patterns across browsers
-  const errorText = result.content?.[0]?.text || '';
-  expect(errorText).toMatch(ERROR_PATTERNS_REGEX);
-});
+  if (expectError) {
+    expect(result.isError).toBe(true);
+    if (errorCheck) {
+      errorCheck(result.content?.[0]?.text || '');
+    }
+  } else if (expectedCode && expectedResult) {
+    expect(result).toHaveResponse(
+      expectCodeAndResult(expectedCode, expectedResult)
+    );
+  }
+}
+
+for (const {
+  name,
+  setup,
+  evaluateArgs,
+  expectedCode,
+  expectedResult,
+  expectError,
+  errorCheck,
+} of evaluateTestCases) {
+  test(name, async ({ client, server, mcpBrowser }) => {
+    test.skip(mcpBrowser === 'msedge', 'msedge browser setup issues');
+
+    if (setup && evaluateArgs.needsRef) {
+      await testEvaluateWithElement(
+        client,
+        server,
+        setup,
+        evaluateArgs,
+        expectedCode,
+        expectedResult
+      );
+    } else if (!setup) {
+      await testEvaluateWithoutElement(
+        client,
+        server,
+        evaluateArgs,
+        expectedCode,
+        expectedResult,
+        expectError ?? false,
+        errorCheck
+      );
+    }
+  });
+}

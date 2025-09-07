@@ -56,8 +56,7 @@ test('browser_select_option', async ({ client, server, mcpBrowser }) => {
     await client.callTool({
       name: 'browser_select_option',
       arguments: {
-        element: 'Select',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
         values: ['bar'],
       },
     })
@@ -102,8 +101,7 @@ test('browser_select_option (multiple)', async ({
     await client.callTool({
       name: 'browser_select_option',
       arguments: {
-        element: 'Select',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
         values: ['bar', 'baz'],
       },
     })
@@ -195,8 +193,7 @@ test('old locator error message', async ({ client, server }) => {
   await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Button 1',
-      ref: 'e2',
+      selectors: [{ ref: 'e2' }],
     },
   });
 
@@ -204,8 +201,7 @@ test('old locator error message', async ({ client, server }) => {
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'Button 2',
-        ref: 'e3',
+        selectors: [{ ref: 'e3' }],
       },
     })
   ).toHaveResponse({

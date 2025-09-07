@@ -88,8 +88,7 @@ test('session log should record tool calls', async ({
     await client.callTool({
       name: 'browser_click',
       arguments: {
-        element: 'Submit button',
-        ref: 'e2',
+        selectors: [{ ref: 'e2' }],
       },
     })
   ).toHaveResponse({
@@ -287,8 +286,7 @@ test('session log should record tool calls and user actions', async ({
   await client.callTool({
     name: 'browser_click',
     arguments: {
-      element: 'Button 2',
-      ref: 'e3',
+      selectors: [{ ref: 'e3' }],
     },
   });
 
