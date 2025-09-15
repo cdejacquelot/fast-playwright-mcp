@@ -178,8 +178,6 @@ Ultracite enforces strict type safety, accessibility standards, and consistent c
 - Don't use namespace imports.
 - Declare regex literals at the top level.
 - Don't use `target="_blank"` without `rel="noopener"`.
-- Don't use global mutable state. Ensure functions and classes are re-entrant and self-contained.
-- Avoid modifying third-party objects directly (monkey-patching). Prefer official extension points and APIs.
 
 ### TypeScript Best Practices
 - Don't use TypeScript enums.

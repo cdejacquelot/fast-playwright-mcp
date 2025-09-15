@@ -102,6 +102,7 @@ export const browserFindElements = defineTabTool({
   },
   handle: async (tab, params, response) => {
     const context = new FindElementsContext(params);
+    contextInstance = context;
 
     try {
       const alternatives = await findElements(tab, context);
@@ -146,7 +147,7 @@ export const browserFindElements = defineTabTool({
     } catch (error) {
       response.addError(`Error finding elements: ${getErrorMessage(error)}`);
     } finally {
-      await cleanupResources(context);
+      await cleanupResources();
     }
   },
 });
@@ -521,10 +522,11 @@ function addPerformanceInfoIfAvailable(
   resultsText.push('', ...builder.getSections());
 }
 
-async function cleanupResources(
-  context: FindElementsContext | null
-): Promise<void> {
-  if (context?.elementDiscovery) {
-    await context.elementDiscovery.dispose();
+let contextInstance: FindElementsContext | null = null;
+
+async function cleanupResources(): Promise<void> {
+  if (contextInstance?.elementDiscovery) {
+    await contextInstance.elementDiscovery.dispose();
   }
+  contextInstance = null;
 }
