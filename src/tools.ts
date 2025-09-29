@@ -19,6 +19,31 @@ import snapshot from './tools/snapshot.js';
 import tabs from './tools/tabs.js';
 import type { AnyTool } from './tools/tool.js';
 import wait from './tools/wait.js';
+
+// Minimal essential tools only
+const essentialTools: AnyTool[] = [
+  common[0], // browser_close
+  ...navigate, // browser_navigate, navigate_back, navigate_forward
+  ...mouse.filter(
+    (t) =>
+      t.schema.name === 'browser_click' ||
+      t.schema.name === 'browser_hover' ||
+      t.schema.name === 'browser_select_option'
+  ),
+  ...keyboard.filter(
+    (t) =>
+      t.schema.name === 'browser_type' || t.schema.name === 'browser_press_key'
+  ),
+  ...evaluate, // browser_evaluate - Execute JavaScript
+  ...console, // browser_console_messages - Console messages
+  ...network, // browser_network_requests - Network requests
+  ...screenshot,
+  ...snapshot.filter((t) => t.schema.name === 'browser_snapshot'),
+  ...wait,
+  batchExecuteTool,
+  browserFindElements, // browser_find_elements - Advanced element search
+];
+
 export const allTools: AnyTool[] = [
   ...common,
   ...console,
@@ -41,9 +66,14 @@ export const allTools: AnyTool[] = [
   browserDiagnose,
 ];
 export function filteredTools(config: FullConfig): AnyTool[] {
+  // Use minimal tools if MINIMAL_TOOLS env var is set
+  if (process.env.MINIMAL_PLAYWRIGHT_TOOLS === 'true') {
+    return essentialTools;
+  }
+
   return allTools.filter(
     (tool) =>
-      tool.capability.startsWith('core') ||
+      tool.capability === 'core' ||
       config.capabilities?.includes(tool.capability)
   );
 }
